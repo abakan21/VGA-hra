@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stellar Drift</title>
+    <style>
+      html, body {
+        margin: 0; padding: 0; width: 100%; height: 100%;
+        overflow: hidden; background: #000; color: #fff;
+        font-family: 'Courier New', ui-monospace, monospace;
+        user-select: none;
+      }
+      #app { position: relative; width: 100vw; height: 100vh; }
+      canvas { display: block; }
+      #hud {
+        position: absolute; inset: 0; pointer-events: none;
+        width: 100%; height: 100%;
+      }
+      .overlay {
+        position: absolute; inset: 0;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        background: radial-gradient(circle at center, rgba(20,0,40,0.75), rgba(0,0,0,0.95));
+        text-align: center;
+        z-index: 10;
+      }
+      .overlay.hidden { display: none; }
+      .overlay h1 {
+        font-size: 72px; margin: 0 0 12px;
+        color: #ff3cf2;
+        text-shadow: 0 0 20px #ff3cf2, 0 0 40px #7a00ff, 0 0 80px #00e5ff;
+        letter-spacing: 8px;
+      }
+      .overlay h2 { font-size: 28px; color: #00e5ff; margin: 0 0 36px; letter-spacing: 4px; }
+      .overlay p { color: #bcd; max-width: 520px; line-height: 1.6; }
+      .overlay button {
+        pointer-events: auto;
+        background: transparent; color: #00e5ff;
+        border: 2px solid #00e5ff; padding: 14px 36px; margin: 8px;
+        font-size: 20px; font-family: inherit; letter-spacing: 4px;
+        cursor: pointer; text-transform: uppercase;
+        transition: all 0.15s;
+      }
+      .overlay button:hover {
+        background: #00e5ff; color: #000;
+        box-shadow: 0 0 20px #00e5ff;
+      }
+      .help {
+        margin-top: 24px; font-size: 12px; color: #889;
+        line-height: 1.7; letter-spacing: 1px;
+      }
+      .help b { color: #ff3cf2; }
+      #scoreline { font-size: 42px; color: #00e5ff; margin: 12px 0 24px;
+        text-shadow: 0 0 12px #00e5ff; }
+      #highscores { font-size: 14px; color: #aac; margin: 0 0 24px; }
+      #highscores div { padding: 2px 0; }
+      #crosshair { position: absolute; left: 50%; top: 50%; width: 40px; height: 40px;
+        transform: translate(-50%, -50%); pointer-events: none; }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="gl"></canvas>
+      <canvas id="hud"></canvas>
+
+      <div id="menu" class="overlay">
+        <h1>STELLAR DRIFT</h1>
+        <h2>// SCORE ATTACK //</h2>
+        <div id="highscores"></div>
+        <button id="btn-start">START</button>
+        <button id="btn-quit">QUIT</button>
+        <div class="help">
+          <b>W/S</b> vpřed/vzad &nbsp; <b>A/D</b> strafe &nbsp; <b>Space/Ctrl</b> nahoru/dolů<br>
+          <b>Myš</b> natáčení &nbsp; <b>LMB</b> laser &nbsp; <b>RMB</b> raketa &nbsp; <b>Shift</b> boost<br>
+          <b>Esc</b> pauza &nbsp; klikni do plochy pro zamčení myši
+        </div>
+      </div>
+
+      <div id="pause" class="overlay hidden">
+        <h1>PAUSED</h1>
+        <button id="btn-resume">RESUME</button>
+        <button id="btn-menu-from-pause">MAIN MENU</button>
+      </div>
+
+      <div id="gameover" class="overlay hidden">
+        <h1>GAME OVER</h1>
+        <div id="scoreline">SCORE: 0</div>
+        <div id="go-highscores"></div>
+        <button id="btn-again">PLAY AGAIN</button>
+        <button id="btn-menu">MAIN MENU</button>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
