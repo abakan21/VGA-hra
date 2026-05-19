@@ -21,7 +21,7 @@ Velikost týmu
 
 Předmět 
 
-VGA — Vizuální grafické aplikace 
+VGA — Vývoj grafické aplikace 
 
  
 
