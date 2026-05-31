@@ -3,6 +3,10 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { Entity, newId } from './entity';
 import { Input } from './input';
 import { clamp, lerp } from './util';
+import { ShipDefinition } from './ships';
+
+
+
 
 const SHIELD_VS = `
   varying vec3 vN;
@@ -70,8 +74,10 @@ export class Player {
 
   laserCooldown = 0;
   rocketLockTarget: Entity | null = null;
+  ship: ShipDefinition;
 
-  constructor(scene: THREE.Scene) {
+  constructor(scene: THREE.Scene, ship: ShipDefinition) {
+    this.ship = ship;
     this.group = new THREE.Group();
     this.shipRoot = new THREE.Group();
     this.group.add(this.shipRoot);
@@ -80,7 +86,7 @@ export class Player {
     shipLight.position.set(0, 0.5, 0);
     this.group.add(shipLight);
 
-    this.loadShipModel('/models/Spaceship.glb');
+    this.loadShipModel(this.ship.modelPath);
 
     const thrGeo = new THREE.SphereGeometry(0.4, 12, 8);
     const thrMat = new THREE.MeshBasicMaterial({ color: 0x00eaff, transparent: true, opacity: 0.9 });
@@ -108,7 +114,7 @@ export class Player {
       position: this.group.position,
       velocity: new THREE.Vector3(),
       radius: 2.0,
-      hp: 100, maxHp: 100,
+      hp: this.ship.maxHp, maxHp: this.ship.maxHp,
       alive: true,
     };
   }
@@ -168,6 +174,14 @@ export class Player {
     });
   }
 
+  setShip(ship: ShipDefinition) {
+    this.ship = ship;
+    this.entity.maxHp = ship.maxHp;
+    this.entity.hp = ship.maxHp;
+    this.shipRoot.clear();
+    this.loadShipModel(ship.modelPath);
+  }
+
   reset() {
     this.entity.hp = this.entity.maxHp;
     this.entity.alive = true;
@@ -205,7 +219,7 @@ export class Player {
 
   update(dt: number, input: Input, camera: THREE.PerspectiveCamera, sectorHalf: THREE.Vector3) {
     const mouse = input.consumeMouse();
-    const sens = 0.0022;
+    const sens = 0.0022 * this.ship.turnMultiplier;
     this.yaw -= mouse.dx * sens;
     this.pitch -= mouse.dy * sens;
     this.pitch = clamp(this.pitch, -Math.PI / 2 * 0.95, Math.PI / 2 * 0.95);
@@ -227,8 +241,8 @@ export class Player {
     const boost = input.keys.has('ShiftLeft') || input.keys.has('ShiftRight');
     this.powers.boostActive = boost && this.powers.energy > 0;
     const boostMul = this.powers.boostActive ? 2.0 : 1.0;
-    const accel = 95 * boostMul;
-    const strafeAccel = 60;
+    const accel = 95 * this.ship.speedMultiplier * boostMul;
+    const strafeAccel = 60 * this.ship.speedMultiplier;
 
     const desired = new THREE.Vector3();
     if (input.keys.has('KeyW')) desired.addScaledVector(fwd, accel);
@@ -241,7 +255,7 @@ export class Player {
     this.entity.velocity.addScaledVector(desired, dt);
     const damping = 1 - 1.1 * dt;
     this.entity.velocity.multiplyScalar(clamp(damping, 0, 1));
-    const maxSpeed = this.powers.boostActive ? 120 : 70;
+    const baseMaxSpeed = this.powers.boostActive ? 120 : 70; const maxSpeed = baseMaxSpeed * this.ship.speedMultiplier;
     if (this.entity.velocity.lengthSq() > maxSpeed * maxSpeed) {
       this.entity.velocity.setLength(maxSpeed);
     }
