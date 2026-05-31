@@ -50,6 +50,7 @@ export class HUD {
     ctx.textBaseline = 'middle';
     ctx.font = '14px "Courier New", monospace';
 
+    // hp bar, boost bar, shield bar -- pozice jsou natvrdo, ale funguje to
     this.drawBar(20, h - 60, 260, 18, player.entity.hp / player.entity.maxHp, '#ff3c50', 'HP', `${Math.ceil(player.entity.hp)} / ${player.entity.maxHp}`);
     this.drawBar(20, h - 32, 260, 12, player.powers.energy / 100, '#00e5ff', 'BOOST', '');
     if (player.powers.shield > 0) this.drawBar(20, h - 80, 260, 8, Math.min(1, player.powers.shield / 5), '#40c0ff', 'SHIELD', '');
@@ -98,6 +99,7 @@ export class HUD {
     this.drawCrosshair(w / 2, h / 2, hitMarker);
 
     if (combo >= 2) {
+      // TODO: tahle hodnota by mela byt stejna jako v game.ts, nezapomenout zmenyt na obou mistech
       const mult = 1 + Math.min(2, (combo - 1) * 0.1);
       ctx.textAlign = 'center';
       ctx.fillStyle = '#ffff40';
@@ -126,6 +128,7 @@ export class HUD {
       ctx.globalAlpha = 1;
     }
 
+    // blikani pri invuln -- modulo 60ms, trochu se to lisi podle fps ale nevadi
     if (player.powers.invuln > 0 && Math.floor(performance.now() / 60) % 2 === 0) {
       ctx.fillStyle = 'rgba(255, 60, 242, 0.08)';
       ctx.fillRect(0, 0, w, h);
@@ -175,6 +178,7 @@ export class HUD {
     }
   }
 
+  // minimap je orientovany podle smerovani hrace, ne podle svetove osy
   private drawMinimap(x: number, y: number, size: number, player: Player, enemies: Enemy[], sectorHalf: THREE.Vector3) {
     const ctx = this.ctx;
     const r = size / 2;
@@ -194,6 +198,7 @@ export class HUD {
     const fwd = player.getForward();
     const yawAngle = Math.atan2(fwd.x, fwd.z);
     const cs = Math.cos(-yawAngle), sn = Math.sin(-yawAngle);
+    // scale * 6 je hack aby nepratelé byli viditelnejsi na minimape
     const scale = (r - 4) / Math.max(sectorHalf.x, sectorHalf.z);
 
     for (const e of enemies) {
@@ -215,6 +220,7 @@ export class HUD {
       ctx.fillRect(px - sz, py - sz, sz * 2, sz * 2);
     }
 
+    // trojuhelnik = hrac, vzdy uprostred
     ctx.fillStyle = '#00ff80';
     ctx.beginPath();
     ctx.moveTo(cx, cy - 5);
@@ -223,6 +229,7 @@ export class HUD {
     ctx.closePath(); ctx.fill();
   }
 
+  // sipky kdyz je neprel mimo obrazovku, projekce pres THREE.Camera
   private drawOffscreenIndicators(w: number, h: number, player: Player, enemies: Enemy[], camera: THREE.Camera) {
     const ctx = this.ctx;
     const cx = w / 2, cy = h / 2;

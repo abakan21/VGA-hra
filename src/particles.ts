@@ -44,6 +44,7 @@ export class ParticlePool {
     this.geo.setAttribute('size', new THREE.BufferAttribute(this.sizes, 1).setUsage(THREE.DynamicDrawUsage));
     this.geo.setDrawRange(0, 0);
 
+    // additive blending makes particles glow nicely, found this on stackoverflow
     this.mat = new THREE.ShaderMaterial({
       transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, vertexColors: true,
       vertexShader: `
@@ -65,9 +66,11 @@ export class ParticlePool {
         }`,
     });
     this.mesh = new THREE.Points(this.geo, this.mat);
+    // bez tohoto particles mizely kdyz se kamera otocila -- nechci resit proc
     this.mesh.frustumCulled = false;
   }
 
+  // TODO: soucasne hledani volneho slotu je linearni, mozna freeList pozdeji ale ted staci
   private spawn(pos: THREE.Vector3, vel: THREE.Vector3, life: number, size: number, color: THREE.Color) {
     for (let i = 0; i < this.cap; i++) {
       const idx = (this.cursor + i) % this.cap;
@@ -81,16 +84,20 @@ export class ParticlePool {
         return;
       }
     }
+    // pool full, particle just gets dropped
   }
 
   emitExplosion(pos: THREE.Vector3, count = 40, power = 18, color = new THREE.Color(1, 0.55, 0.2)) {
     for (let i = 0; i < count; i++) {
       const dir = randomUnitVec().multiplyScalar(rand(power * 0.3, power));
+      // rand > 1.0 je ok tady, bloom to stejne orizne
       const c = color.clone().multiplyScalar(rand(0.7, 1.3));
       this.spawn(pos, dir, rand(0.5, 1.2), rand(2.0, 5.0), c);
     }
   }
+
   emitThrust(pos: THREE.Vector3, dir: THREE.Vector3) {
+    // rychlost dozadu + trochu nahodneho rozsypu
     const v = dir.clone().multiplyScalar(-rand(10, 18));
     v.x += rand(-1.5, 1.5); v.y += rand(-1.5, 1.5); v.z += rand(-1.5, 1.5);
     const c = Math.random() < 0.5
@@ -98,6 +105,7 @@ export class ParticlePool {
       : new THREE.Color(1.0, 0.3, 0.95);
     this.spawn(pos, v, rand(0.2, 0.45), rand(2.5, 4.5), c);
   }
+
   emitTrail(pos: THREE.Vector3, color = new THREE.Color(1.0, 0.4, 0.1)) {
     const v = randomUnitVec().multiplyScalar(rand(0.3, 1.2));
     this.spawn(pos, v, rand(0.2, 0.4), rand(1.5, 3.0), color.clone());
@@ -117,6 +125,7 @@ export class ParticlePool {
       this.positions[idx]     = p.pos.x;
       this.positions[idx + 1] = p.pos.y;
       this.positions[idx + 2] = p.pos.z;
+      // nasobeni 1.4 aby byly castice na zacatku zivota jasnejsi
       this.colors[idx]     = p.color.r * f * 1.4;
       this.colors[idx + 1] = p.color.g * f * 1.4;
       this.colors[idx + 2] = p.color.b * f * 1.4;

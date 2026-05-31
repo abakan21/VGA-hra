@@ -2,7 +2,7 @@ import { Game, GameState } from './game';
 import { loadHighscores, renderHighscores, saveHighscore } from './highscore';
 import { SHIPS } from './ships';
 
-const gl = document.getElementById('gl') as HTMLCanvasElement;
+    import { setupProgressionUi } from './progressionUi'; import { setupShipSelectPreviews } from './shipPreview'; import { setupShipSelectionStatus } from './shipSelectionStatus'; const gl = document.getElementById('gl') as HTMLCanvasElement;
 const hudCanvas = document.getElementById('hud') as HTMLCanvasElement;
 
 const menuEl = document.getElementById('menu')!;
@@ -91,3 +91,9 @@ window.addEventListener('keydown', (e) => {
     game.setState('playing');
   }
 });
+
+setupProgressionUi();
+
+setupShipSelectPreviews();
+
+setupShipSelectionStatus();

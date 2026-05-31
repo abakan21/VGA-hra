@@ -1,3 +1,4 @@
+const POWERUP_VISUAL_SCALE = 1.75;
 import * as THREE from 'three';
 import { Entity, newId } from './entity';
 import { rand } from './util';
@@ -58,7 +59,7 @@ export class PowerupManager {
   spawn(pos: THREE.Vector3, kind: PowerupKind) {
     const mesh = new THREE.Mesh(this.geo, this.mats[kind]);
     mesh.position.copy(pos);
-    this.scene.add(mesh);
+    mesh.scale.setScalar(POWERUP_VISUAL_SCALE); this.scene.add(mesh);
     const p: Powerup = {
       id: newId(),
       kind: 'powerup',

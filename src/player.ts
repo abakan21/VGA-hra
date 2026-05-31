@@ -2,11 +2,8 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { Entity, newId } from './entity';
 import { Input } from './input';
-import { clamp, lerp } from './util';
 import { ShipDefinition } from './ships';
-
-
-
+import { clamp, lerp } from './util';
 
 const SHIELD_VS = `
   varying vec3 vN;
@@ -46,7 +43,7 @@ export interface PlayerPowers {
   nukes: number;
 }
 
-export class Player {
+export class Player { cosmeticModelPath: string | null = null;
   entity: Entity;
   group: THREE.Group;
   shipRoot: THREE.Group;
@@ -86,7 +83,7 @@ export class Player {
     shipLight.position.set(0, 0.5, 0);
     this.group.add(shipLight);
 
-    this.loadShipModel(this.ship.modelPath);
+    this.loadShipModel(this.cosmeticModelPath ?? this.ship.modelPath);
 
     const thrGeo = new THREE.SphereGeometry(0.4, 12, 8);
     const thrMat = new THREE.MeshBasicMaterial({ color: 0x00eaff, transparent: true, opacity: 0.9 });
@@ -179,10 +176,10 @@ export class Player {
     this.entity.maxHp = ship.maxHp;
     this.entity.hp = ship.maxHp;
     this.shipRoot.clear();
-    this.loadShipModel(ship.modelPath);
+    this.loadShipModel(this.cosmeticModelPath ?? ship.modelPath);
   }
 
-  reset() {
+  setCosmeticModelPath(modelPath: string) { this.cosmeticModelPath = modelPath; if (this.shipRoot) { this.shipRoot.clear(); const shipAny = this as any; if (typeof shipAny.loadShipModel === 'function') { shipAny.loadShipModel(modelPath); } } } reset() {
     this.entity.hp = this.entity.maxHp;
     this.entity.alive = true;
     this.entity.position.set(0, 0, 0);
@@ -219,7 +216,7 @@ export class Player {
 
   update(dt: number, input: Input, camera: THREE.PerspectiveCamera, sectorHalf: THREE.Vector3) {
     const mouse = input.consumeMouse();
-    const sens = 0.0022 * this.ship.turnMultiplier;
+    const sens = 0.0011 * this.ship.turnMultiplier;
     this.yaw -= mouse.dx * sens;
     this.pitch -= mouse.dy * sens;
     this.pitch = clamp(this.pitch, -Math.PI / 2 * 0.95, Math.PI / 2 * 0.95);

@@ -5,6 +5,7 @@ export interface ShipDefinition {
   name: string;
   description: string;
   modelPath: string;
+  previewImagePath?: string;
 
   maxHp: number;
   damageMultiplier: number;
@@ -19,7 +20,8 @@ export const SHIPS: Record<ShipId, ShipDefinition> = {
     id: 'heavy',
     name: 'Heavy Fighter',
     description: 'High health and stronger shots, but slower movement and turning.',
-    modelPath: '/models/Spaceship.glb',
+    modelPath: '/models/Fatship.glb',
+    previewImagePath: '/previews/heavy_ship.png',
 
     maxHp: 150,
     damageMultiplier: 1.15,
@@ -34,6 +36,7 @@ export const SHIPS: Record<ShipId, ShipDefinition> = {
     name: 'Twin Scout',
     description: 'Fast and agile ship with two guns, but lower health.',
     modelPath: '/models/Spaceship.glb',
+    previewImagePath: '/previews/scout_ship.png',
 
     maxHp: 90,
     damageMultiplier: 0.9,
