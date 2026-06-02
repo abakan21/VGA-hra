@@ -11,6 +11,7 @@ export interface Enemy extends Entity {
 
 type EnemyType = 'chaser' | 'drone' | 'boss';
 
+interface SpawnRequest { type: EnemyType; speedBonus: number; hpBonus: number; }
 interface ModelProto {
   root: THREE.Object3D;
   scale: number;
@@ -24,7 +25,7 @@ export class EnemyManager {
   wave = 0;
   waveTimer = 0;
   waveDelay = 2.0;
-  waveActive = false;
+  waveActive = false; spawnQueue: SpawnRequest[] = []; spawnTimer = 0; spawnInterval = 0.28;
   onWaveCleared?: (wave: number) => void;
   onWaveStart?: (wave: number) => void;
 
@@ -129,7 +130,7 @@ export class EnemyManager {
     this.onWaveStart?.(wave);
   }
 
-  private spawnAroundPlayer(type: 'chaser' | 'drone' | 'boss', speedBonus: number, hpBonus: number) {
+  private spawnNextQueuedEnemy() { const req = this.spawnQueue.shift(); if (!req) return; this.spawnAroundPlayer(req.type, req.speedBonus, req.hpBonus); } private updateSpawnQueue(dt: number) { if (!this.waveActive || this.spawnQueue.length === 0) return; this.spawnTimer -= dt; if (this.spawnTimer <= 0) { this.spawnTimer = this.spawnInterval; this.spawnNextQueuedEnemy(); } } private spawnAroundPlayer(type: 'chaser' | 'drone' | 'boss', speedBonus: number, hpBonus: number) {
     const dir = randomUnitVec();
     const dist = rand(90, 160);
     const pos = dir.multiplyScalar(dist);

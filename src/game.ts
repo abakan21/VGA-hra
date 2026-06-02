@@ -2,14 +2,15 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { ShaderPass } from 'three/examples/jsm/shaders/ShaderPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
 
 import { Input } from './input';
 import { Player } from './player';
+import { ShipDefinition, SHIPS, DEFAULT_SHIP_ID } from './ships';
 import { WeaponSystem } from './weapons';
 import { EnemyManager, Enemy } from './enemies';
-import { AsteroidField, createAsteroidField, hideAsteroidInstance } from './asteroids';
+import { AsteroidField, createAsteroidField, hideAsteroidInstance, killAsteroidInstance } from './asteroids';
 import { ParticlePool } from './particles';
 import { PowerupManager } from './powerups';
 import { HUD } from './hud';
@@ -19,7 +20,7 @@ import { createNebula, createPlanet, createDebris, DebrisField } from './environ
 import { loadDecor, updateDecor, DecorObject } from './decor';
 import { Entity } from './entity';
 
-export type GameState = 'menu' | 'playing' | 'paused' | 'gameover';
+import { Economy, COIN_REWARDS } from './economy'; import { Inventory } from './inventory'; import { getShipSkinModelPath } from './cosmetics'; import { rollFunWeaponDrop, FUN_WEAPONS, FunWeaponMode } from './funweapons'; import { getShipSkinModelPathForShip } from './cosmetics'; import { decorateFunProjectiles } from './funProjectileVisuals'; import { SpaceSectorDefinition, getSpaceSectorForWave } from './spaceSectors'; export type GameState = 'menu' | 'playing' | 'paused' | 'gameover';
 
 export interface GameCallbacks {
   onStateChange: (s: GameState, score: number) => void;
@@ -56,19 +57,22 @@ export class Game {
 
   input: Input;
   player: Player;
+  selectedShip: ShipDefinition = SHIPS[DEFAULT_SHIP_ID];
   weapons: WeaponSystem;
   enemies: EnemyManager;
   asteroids!: AsteroidField;
   particles: ParticlePool;
   powerups: PowerupManager;
   hud: HUD;
-  audio: AudioFx;
+  audio: AudioFx; economy: Economy; inventory: Inventory; funWeaponMode: FunWeaponMode = 'normal'; funWeaponTimer = 0;
   starfield: THREE.Points;
   star: THREE.Mesh;
   starLight: THREE.DirectionalLight;
+  ambientLight: THREE.AmbientLight;
   nebula: THREE.Mesh;
   planet: THREE.Group;
   debris: DebrisField;
+  blackHoleVisual: THREE.Group;
   decor: DecorObject[] = [];
 
   state: GameState = 'menu';
@@ -81,6 +85,9 @@ export class Game {
   combo = 0;
   comboTimer = 0;
   hitMarker = 0;
+  activeSafeSpaceSectorId = '';
+  activeSpaceSectorId = '';
+  currentSpaceSectorId = '';
   baseFov = 70;
 
   private cb: GameCallbacks;
@@ -104,7 +111,7 @@ export class Game {
     this.camera.position.set(0, 4, 15);
 
     this.input = new Input(gl);
-    this.audio = new AudioFx();
+    this.audio = new AudioFx(); this.economy = new Economy(); this.inventory = new Inventory();
 
     this.nebula = createNebula();
     this.scene.add(this.nebula);
@@ -127,12 +134,16 @@ export class Game {
     this.debris = createDebris(220, SECTOR);
     this.scene.add(this.debris.mesh);
 
+    this.blackHoleVisual = this.createBlackHoleVisual();
+    this.blackHoleVisual.visible = false;
+    this.scene.add(this.blackHoleVisual);
+
     // lighting setup — took forever to get this looking right
     this.starLight = new THREE.DirectionalLight(0xffe4f0, 1.8);
     this.starLight.position.copy(this.star.position).normalize();
     this.scene.add(this.starLight);
-    const amb = new THREE.AmbientLight(0x6a4878, 0.9);
-    this.scene.add(amb);
+    this.ambientLight = new THREE.AmbientLight(0x6a4878, 0.9);
+    this.scene.add(this.ambientLight);
     const hemi = new THREE.HemisphereLight(0xa080ff, 0x301030, 0.6);
     this.scene.add(hemi);
     // fill lights so the ship doesn't look flat
@@ -143,10 +154,10 @@ export class Game {
     fillCyan.position.set(0.3, 0.8, -1);
     this.scene.add(fillCyan);
 
-    this.player = new Player(this.scene);
-    this.weapons = new WeaponSystem(this.scene);
+    this.player = new Player(this.scene, this.selectedShip);
+    if ('setCosmeticModelPath' in this.player) { (this.player as any).setCosmeticModelPath(getShipSkinModelPath(this.inventory.selectedShipSkin)); } this.weapons = new WeaponSystem(this.scene);
     this.enemies = new EnemyManager(this.scene, this.weapons);
-    this.particles = new ParticlePool(900);
+    this.particles = new ParticlePool(1800);
     this.scene.add(this.particles.mesh);
     this.powerups = new PowerupManager(this.scene);
     this.hud = new HUD(hudCanvas);
@@ -187,8 +198,13 @@ export class Game {
     };
     this.enemies.onWaveCleared = (w) => {
       this.hud.showMessage(`WAVE ${w} CLEARED +${50 * w}`, 1.5);
-      this.score += 50 * w;
+      this.score += 50 * w; this.economy.add(COIN_REWARDS.waveClearBase + w * 5);
     };
+
+
+    this.restoreDefaultSpaceView();
+
+    this.applySafeSpaceSector(getSpaceSectorForWave(1), false);
 
     window.addEventListener('resize', () => this.onResize());
   }
@@ -217,8 +233,10 @@ export class Game {
     }
   }
 
-  startNew() {
-    this.score = 0;
+  startNew(ship: ShipDefinition = this.selectedShip) {
+  this.selectedShip = ship;
+  this.player.setShip(ship); this.applySelectedShipSkin();
+    this.score = 0; this.economy.resetRun(); this.funWeaponMode = 'normal'; this.funWeaponTimer = 0; if ('setCosmeticModelPath' in this.player) { (this.player as any).setCosmeticModelPath(getShipSkinModelPath(this.inventory.selectedShipSkin)); }
     this.combo = 0;
     this.comboTimer = 0;
     this.shake = 0;
@@ -275,10 +293,10 @@ export class Game {
         this.weapons.fireTripleShot(muzzle, fwd, right, 8, vel);
         this.player.laserCooldown = rapid ? 0.075 : 0.15;
       } else {
-        this.weapons.fireLaser(muzzle, fwd, true, 280, 10, vel);
+        this.fireShipLaser(muzzle, fwd, right, vel, 10);
         this.player.laserCooldown = rapid ? 0.065 : 0.13;
       }
-      this.audio.laser();
+      this.playCurrentShotSound('laser');
     }
     if (this.input.buttons.right && this.player.powers.rocketCooldown <= 0) {
       const fwd = this.player.getForward();
@@ -287,13 +305,15 @@ export class Game {
       const muzzle = this.player.entity.position.clone().addScaledVector(fwd, 3);
       const target = this.weapons.findHomingTarget(muzzle, fwd, this.enemies.enemies);
       const vel = this.player.entity.velocity;
+      const rocketStartIndex = this.weapons.projectiles.length;
       if (this.player.powers.multiRocket > 0) {
         this.weapons.fireMultiRocket(muzzle, fwd, right, up, target, 60, vel);
       } else {
         this.weapons.fireRocket(muzzle, fwd, target, 60, vel);
       }
+      decorateFunProjectiles(this.scene, this.weapons.projectiles as any, rocketStartIndex, this.funWeaponMode);
       this.player.powers.rocketCooldown = 3.0;
-      this.audio.rocket();
+      this.playCurrentShotSound('rocket');
     }
     if (this.input.consumeNuke() && this.player.powers.nukes > 0) {
       this.player.powers.nukes--;
@@ -310,6 +330,7 @@ export class Game {
     this.weapons.update(dt);
     const timeScale = this.player.powers.slowMo > 0 ? 0.3 : 1;
     this.enemies.update(dt, this.player.entity.position, timeScale);
+    this.updateSafeSpaceSectorByWave();
 
     if (this.comboTimer > 0) {
       this.comboTimer -= dt;
@@ -318,7 +339,7 @@ export class Game {
     if (this.shake > 0) this.shake = Math.max(0, this.shake - dt * 2.5);
     if (this.hitMarker > 0) this.hitMarker -= dt;
     this.asteroids.update(dt);
-    this.powerups.update(dt);
+    this.powerups.update(dt); if (this.funWeaponTimer > 0) { this.funWeaponTimer -= dt; if (this.funWeaponTimer <= 0) this.funWeaponMode = 'normal'; }
     this.particles.update(dt);
 
     for (const r of this.weapons.projectiles) {
@@ -367,8 +388,10 @@ export class Game {
             this.particles.emitExplosion(p.position.clone(), 8, 10, new THREE.Color(0.8, 0.4, 1.0));
             if (a.hp <= 0) {
               a.alive = false;
-              hideAsteroidInstance(this.asteroids.mesh, a.data.index);
-              this.particles.emitExplosion(a.position.clone(), 28, 16, new THREE.Color(0.9, 0.5, 1.0));
+              killAsteroidInstance(this.asteroids.entities, a.data.index);
+              console.log('ASTEROID DEAD', a.data.scale, a.position);
+              this.particles.emitAsteroidExplosion(a.position.clone(), 1.0);
+              this.shake = Math.max(this.shake, 0.3);
               this.audio.explode();
               this.score += 10;
               this.powerups.maybeDrop(a.position.clone(), 0.12);
@@ -462,8 +485,8 @@ export class Game {
         a.hp -= dmg;
         if (a.hp <= 0) {
           a.alive = false;
-          hideAsteroidInstance(this.asteroids.mesh, a.data.index);
-          this.particles.emitExplosion(a.position.clone(), 24, 14, new THREE.Color(0.9, 0.5, 1.0));
+          killAsteroidInstance(this.asteroids.entities, a.data.index);
+          this.particles.emitAsteroidExplosion(a.position.clone(), a.data.scale / 10);
           this.score += 10;
         }
       }
@@ -509,10 +532,314 @@ export class Game {
         baseScore = 30;
         this.powerups.maybeDrop(e.position.clone(), 0.25);
       }
-      this.score += Math.round(baseScore * mult);
+      this.score += Math.round(baseScore * mult); 
+      this.economy.add(e.kind === 'boss' ? COIN_REWARDS.boss : e.kind === 'chaser' ? COIN_REWARDS.chaser : COIN_REWARDS.drone); 
+      const funDrop = rollFunWeaponDrop(); if (funDrop) { this.funWeaponMode = funDrop; this.funWeaponTimer = FUN_WEAPONS[funDrop].duration; 
+        this.hud.showMessage(`${FUN_WEAPONS[funDrop].name}!`, 1.4); }
       // console.log('score', this.score, 'combo', this.combo, 'mult', mult);
     }
     this.enemies.removeDead();
+  }
+
+  private playCurrentShotSound(kind: 'laser' | 'rocket') {
+    const soundPath = FUN_WEAPONS[this.funWeaponMode].soundPath;
+    if (soundPath) {
+      const audio = new Audio(soundPath);
+      audio.volume = 0.45;
+      audio.play().catch(() => undefined);
+      return;
+    }
+    // для обычного режима -- стандартные звуки
+    if (kind === 'rocket') this.audio.rocket();
+    else this.audio.laser();
+  }
+    
+    private fireShipLaser(muzzle: THREE.Vector3, fwd: THREE.Vector3, right: THREE.Vector3, vel: THREE.Vector3, baseDamage: number) { 
+      const startIndex = this.weapons.projectiles.length; const gunCount = Math.max(1, this.player.ship?.gunCount ?? 1); 
+      const shipDamage = this.player.ship?.damageMultiplier ?? 1; 
+      const funDamage = typeof FUN_WEAPONS !== 'undefined' && this.funWeaponMode ? FUN_WEAPONS[this.funWeaponMode].damageMultiplier : 1; 
+      const damage = baseDamage * shipDamage * funDamage; if (gunCount >= 2) { this.weapons.fireLaser(muzzle.clone().addScaledVector(right, -0.82), fwd, true, 280, damage, vel); 
+        this.weapons.fireLaser(muzzle.clone().addScaledVector(right, 0.82), fwd, true, 280, damage, vel); } else { this.weapons.fireLaser(muzzle, fwd, true, 280, damage, vel); } 
+        decorateFunProjectiles(this.scene, this.weapons.projectiles as any, startIndex, this.funWeaponMode); } private applySelectedShipSkin() { if (!this.player || !this.inventory) return; this.inventory.load(); 
+          const shipId = this.selectedShip?.id ?? this.player.ship?.id ?? 'heavy'; const modelPath = getShipSkinModelPathForShip(this.inventory.selectedShipSkin, shipId); 
+          if ('setCosmeticModelPath' in this.player) { (this.player as any).setCosmeticModelPath(modelPath); } } private disposeObject3D(object: THREE.Object3D | null | undefined) {
+    if (!object) return;
+
+    object.traverse((child) => {
+      const mesh = child as THREE.Mesh;
+      if (!mesh.isMesh) return;
+
+      mesh.geometry?.dispose();
+
+      const material = mesh.material as THREE.Material | THREE.Material[];
+      if (Array.isArray(material)) {
+        material.forEach((mat) => mat.dispose());
+      } else {
+        material?.dispose();
+      }
+    });
+
+    object.removeFromParent();
+  }
+
+  private applySpaceSector(sector: SpaceSectorDefinition, showMessage: boolean) {
+    if (this.currentSpaceSectorId === sector.id) return;
+    this.currentSpaceSectorId = sector.id;
+
+    this.renderer.setClearColor(sector.clearColor, 1);
+    this.scene.fog = new THREE.FogExp2(sector.fogColor, sector.fogDensity);
+
+    if (this.bloom) {
+      this.bloom.strength = sector.bloomStrength;
+    }
+
+    this.starLight.color.setHex(sector.starLightColor);
+    this.starLight.intensity = sector.starLightIntensity;
+
+    this.ambientLight.color.setHex(sector.ambientColor);
+    this.ambientLight.intensity = sector.ambientIntensity;
+
+    const lightDir = this.star.position.clone().negate().normalize();
+
+    this.disposeObject3D(this.planet);
+    this.planet = createPlanet(
+      sector.planetPosition.clone(),
+      sector.planetRadius,
+      sector.planetColorA,
+      sector.planetColorB,
+      lightDir,
+    );
+    this.scene.add(this.planet);
+
+    if (this.debris?.mesh) {
+      this.disposeObject3D(this.debris.mesh);
+    }
+    this.debris = createDebris(sector.debrisCount, SECTOR);
+    this.debris.mesh.scale.setScalar(sector.debrisScale);
+    this.scene.add(this.debris.mesh);
+
+    if (showMessage) {
+      this.hud.showMessage(`SECTOR: ${sector.name}`, 1.4);
+    }
+  }
+
+  private forceDisposeObject3D(object: THREE.Object3D | null | undefined) {
+    if (!object) return;
+
+    object.traverse((child) => {
+      const mesh = child as THREE.Mesh;
+      if (!mesh.isMesh) return;
+
+      mesh.geometry?.dispose();
+
+      const material = mesh.material as THREE.Material | THREE.Material[];
+      if (Array.isArray(material)) {
+        material.forEach((mat) => mat.dispose());
+      } else {
+        material?.dispose();
+      }
+    });
+
+    object.removeFromParent();
+  }
+
+  private forceApplySpaceSector(sector: SpaceSectorDefinition, showMessage: boolean) {
+    if (this.activeSpaceSectorId === sector.id) return;
+
+    this.activeSpaceSectorId = sector.id;
+
+    this.renderer.setClearColor(sector.clearColor, 1);
+    this.scene.fog = new THREE.FogExp2(sector.fogColor, sector.fogDensity);
+
+    if (this.bloom) {
+      this.bloom.strength = sector.bloomStrength;
+    }
+
+    this.starLight.color.setHex(sector.starLightColor);
+    this.starLight.intensity = sector.starLightIntensity;
+
+    const lightDir = this.star.position.clone().negate().normalize();
+
+    this.forceDisposeObject3D(this.planet);
+    this.planet = createPlanet(
+      sector.planetPosition.clone(),
+      sector.planetRadius,
+      sector.planetColorA,
+      sector.planetColorB,
+      lightDir,
+    );
+    this.scene.add(this.planet);
+
+    if (this.debris?.mesh) {
+      this.forceDisposeObject3D(this.debris.mesh);
+    }
+
+    this.debris = createDebris(sector.debrisCount, SECTOR);
+    this.debris.mesh.scale.setScalar(sector.debrisScale);
+    this.scene.add(this.debris.mesh);
+
+    if (showMessage) {
+      this.hud.showMessage(`SECTOR: ${sector.name}`, 1.6);
+    }
+
+    console.info(`[space] sector changed to ${sector.name}`);
+  }
+
+  private forceUpdateSpaceSectorByWave() {
+    const wave = Math.max(1, this.enemies.wave || 1);
+    this.forceApplySpaceSector(getSpaceSectorForWave(wave), true);
+  }
+
+  private restoreDefaultSpaceView() {
+    this.renderer.setClearColor(0x05010a, 1);
+    this.scene.fog = new THREE.FogExp2(0x05010a, 0.00005);
+
+    if (this.bloom) {
+      this.bloom.strength = 0.45;
+      this.bloom.radius = 0.7;
+      this.bloom.threshold = 0.85;
+    }
+
+    if (this.starLight) {
+      this.starLight.color.setHex(0xffe4f0);
+      this.starLight.intensity = 1.8;
+    }
+
+    if (this.nebula) this.nebula.visible = true;
+    if (this.starfield) this.starfield.visible = true;
+    if (this.star) this.star.visible = true;
+    if (this.planet) this.planet.visible = true;
+    if (this.debris?.mesh) this.debris.mesh.visible = true;
+
+    this.updateSpecialSectorVisuals(getSpaceSectorForWave(1));
+  }
+
+  private createBlackHoleVisual(): THREE.Group {
+    const group = new THREE.Group();
+    group.position.set(0, 120, -1250);
+    group.scale.setScalar(85);
+
+    const core = new THREE.Mesh(
+      new THREE.SphereGeometry(1.0, 48, 32),
+      new THREE.MeshBasicMaterial({
+        color: 0x000000,
+      }),
+    );
+
+    const photonRing = new THREE.Mesh(
+      new THREE.TorusGeometry(1.25, 0.035, 16, 128),
+      new THREE.MeshBasicMaterial({
+        color: 0x7fd7ff,
+        transparent: true,
+        opacity: 0.85,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      }),
+    );
+    photonRing.rotation.x = Math.PI / 2;
+
+    const accretionRing = new THREE.Mesh(
+      new THREE.TorusGeometry(1.9, 0.12, 18, 160),
+      new THREE.MeshBasicMaterial({
+        color: 0xff8a25,
+        transparent: true,
+        opacity: 0.7,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      }),
+    );
+    accretionRing.rotation.x = Math.PI / 2.4;
+    accretionRing.rotation.z = 0.25;
+
+    const outerGlow = new THREE.Mesh(
+      new THREE.SphereGeometry(1.45, 48, 32),
+      new THREE.MeshBasicMaterial({
+        color: 0x2a4cff,
+        transparent: true,
+        opacity: 0.12,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      }),
+    );
+
+    group.add(outerGlow, core, photonRing, accretionRing);
+    return group;
+  }
+
+  private updateSpecialSectorVisuals(sector: SpaceSectorDefinition) {
+    if (this.blackHoleVisual) {
+      this.blackHoleVisual.visible = !!sector.blackHole;
+    }
+
+    if (sector.blackHole && this.blackHoleVisual) {
+      this.blackHoleVisual.rotation.z += 0.05;
+    }
+
+    if (this.star) {
+      this.star.scale.setScalar(sector.closeStarScale ?? 1);
+
+      if (sector.closeStarPosition) {
+        this.star.position.copy(sector.closeStarPosition);
+      } else {
+        this.star.position.set(-2500, 900, -3500);
+      }
+    }
+  }
+
+  private applySafeSpaceSector(sector: SpaceSectorDefinition, showMessage: boolean) {
+    if (this.activeSafeSpaceSectorId === sector.id) return;
+
+    this.activeSafeSpaceSectorId = sector.id;
+
+    this.renderer.setClearColor(sector.clearColor, 1);
+    this.scene.fog = new THREE.FogExp2(sector.fogColor, sector.fogDensity);
+
+    if (this.bloom) {
+      this.bloom.strength = sector.bloomStrength;
+    }
+
+    this.starLight.color.setHex(sector.starLightColor);
+    this.starLight.intensity = sector.starLightIntensity;
+
+    const nebulaMat = this.nebula.material as THREE.ShaderMaterial;
+    if (nebulaMat.uniforms?.uColorA?.value) nebulaMat.uniforms.uColorA.value.setHex(sector.nebulaColorA);
+    if (nebulaMat.uniforms?.uColorB?.value) nebulaMat.uniforms.uColorB.value.setHex(sector.nebulaColorB);
+    if (nebulaMat.uniforms?.uColorC?.value) nebulaMat.uniforms.uColorC.value.setHex(sector.nebulaColorC);
+
+    this.planet.position.copy(sector.planetPosition);
+    this.planet.scale.setScalar(sector.planetScale);
+
+    const planetSphere = this.planet.children[0] as THREE.Mesh | undefined;
+    const planetMat = planetSphere?.material as THREE.ShaderMaterial | undefined;
+    if (planetMat?.uniforms?.uColorA?.value) planetMat.uniforms.uColorA.value.setHex(sector.planetColorA);
+    if (planetMat?.uniforms?.uColorB?.value) planetMat.uniforms.uColorB.value.setHex(sector.planetColorB);
+
+    if (this.debris?.mesh) {
+      this.debris.mesh.scale.setScalar(sector.debrisScale);
+      const debrisMat = this.debris.mesh.material as THREE.MeshStandardMaterial;
+      if (debrisMat?.isMeshStandardMaterial) {
+        debrisMat.color.setHex(sector.debrisColor);
+        debrisMat.emissive.setHex(sector.debrisEmissive);
+        debrisMat.needsUpdate = true;
+      }
+    }
+
+    if (this.nebula) this.nebula.visible = true;
+    if (this.starfield) this.starfield.visible = true;
+    if (this.star) this.star.visible = true;
+    if (this.planet) this.planet.visible = true;
+    if (this.debris?.mesh) this.debris.mesh.visible = true;
+
+    if (showMessage) {
+      this.hud.showMessage(`SECTOR: ${sector.name}`, 1.6);
+    }
+
+    console.info(`[space] sector changed to ${sector.name}`);
+  }
+
+  private updateSafeSpaceSectorByWave() {
+    const wave = Math.max(1, this.enemies.wave || 1);
+    this.applySafeSpaceSector(getSpaceSectorForWave(wave), true);
   }
 
   private render(dt: number) {
@@ -548,6 +875,7 @@ export class Game {
     this.starfield.position.copy(this.camera.position);
     this.starfield.rotation.y += dt * 0.002;
     this.debris.update(dt);
+    if (this.blackHoleVisual?.visible) this.blackHoleVisual.rotation.z += dt * 0.22;
     updateDecor(this.decor, dt);
 
     this.composer.render();

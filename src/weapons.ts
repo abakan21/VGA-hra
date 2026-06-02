@@ -70,19 +70,19 @@ export class WeaponSystem {
     mesh.position.copy(from);
     mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir.clone().normalize());
     this.scene.add(mesh);
-    const vel = dir.clone().normalize().multiplyScalar(110);
+    const vel = dir.clone().normalize().multiplyScalar(700);
     if (inheritVel) vel.add(inheritVel);
     const p: Projectile = {
       id: newId(),
       kind: 'rocket',
       position: mesh.position,
       velocity: vel,
-      radius: 0.9,
+      radius: 1.4,
       hp: 1, maxHp: 1,
       alive: true,
       ttl: 4.5,
       object3d: mesh,
-      data: { target, damage, maxTurn: 1.8 },
+      data: { target, damage, maxTurn: 4.5 },
     };
     this.projectiles.push(p);
   }
@@ -103,7 +103,7 @@ export class WeaponSystem {
             axis.normalize();
             const q = new THREE.Quaternion().setFromAxisAngle(axis, angle);
             dir.applyQuaternion(q);
-            p.velocity.copy(dir).multiplyScalar(Math.min(150, p.velocity.length() + 40 * dt));
+            p.velocity.copy(dir).multiplyScalar(400);
           }
           p.object3d.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir);
         } else {

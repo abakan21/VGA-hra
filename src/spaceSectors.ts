@@ -3,224 +3,160 @@ import * as THREE from 'three';
 export interface SpaceSectorDefinition {
   id: string;
   name: string;
-
   clearColor: number;
   fogColor: number;
   fogDensity: number;
-
   bloomStrength: number;
   starLightColor: number;
   starLightIntensity: number;
-
+  ambientColor: number;
+  ambientIntensity: number;
   nebulaColorA: number;
   nebulaColorB: number;
   nebulaColorC: number;
-
   planetPosition: THREE.Vector3;
+  planetRadius: number;
   planetScale: number;
   planetColorA: number;
   planetColorB: number;
-
+  debrisCount: number;
+  debrisScale: number;
   debrisColor: number;
   debrisEmissive: number;
-  debrisScale: number;
-
-  // Optional visual effects for special sectors.
+  blackHole?: boolean;
   closeStarScale?: number;
   closeStarPosition?: THREE.Vector3;
-  blackHole?: boolean;
 }
 
-export const SPACE_SECTORS: SpaceSectorDefinition[] = [
+// sektory jsem ladil rucne, mozna pridat dalsi pozdeji
+const SECTORS: SpaceSectorDefinition[] = [
   {
-    id: 'violet-rift',
-    name: 'Violet Rift',
-
+    id: 'nebula',
+    name: 'NEBULA SECTOR',
     clearColor: 0x05010a,
     fogColor: 0x05010a,
     fogDensity: 0.00005,
-
     bloomStrength: 0.45,
     starLightColor: 0xffe4f0,
     starLightIntensity: 1.8,
-
-    nebulaColorA: 0x3a0a5c,
-    nebulaColorB: 0x124a7a,
-    nebulaColorC: 0xff3a8a,
-
+    ambientColor: 0x6a4878,
+    ambientIntensity: 0.9,
+    nebulaColorA: 0x3a1060,
+    nebulaColorB: 0x8020a0,
+    nebulaColorC: 0x200830,
     planetPosition: new THREE.Vector3(1800, -300, -1800),
+    planetRadius: 320,
     planetScale: 1.0,
     planetColorA: 0x2a1a6a,
     planetColorB: 0x60a0ff,
-
-    debrisColor: 0x776680,
-    debrisEmissive: 0x221030,
+    debrisCount: 220,
     debrisScale: 1.0,
+    debrisColor: 0x8866aa,
+    debrisEmissive: 0x220033,
   },
   {
-    id: 'blue-frost',
-    name: 'Blue Frost',
-
-    clearColor: 0x000b1f,
-    fogColor: 0x00142f,
+    id: 'asteroid-belt',
+    name: 'ASTEROID BELT',
+    clearColor: 0x080510,
+    fogColor: 0x080510,
     fogDensity: 0.00007,
-
-    bloomStrength: 0.72,
-    starLightColor: 0x77ddff,
-    starLightIntensity: 2.35,
-
-    nebulaColorA: 0x003a88,
-    nebulaColorB: 0x00d9ff,
-    nebulaColorC: 0x85eaff,
-
-    planetPosition: new THREE.Vector3(-1350, -220, -1400),
-    planetScale: 1.25,
-    planetColorA: 0x061d55,
-    planetColorB: 0x8be9ff,
-
-    debrisColor: 0x6f8da8,
-    debrisEmissive: 0x0a3550,
-    debrisScale: 0.75,
+    bloomStrength: 0.38,
+    starLightColor: 0xffd0c0,
+    starLightIntensity: 2.0,
+    ambientColor: 0x504060,
+    ambientIntensity: 0.7,
+    nebulaColorA: 0x4a2010,
+    nebulaColorB: 0x903020,
+    nebulaColorC: 0x200808,
+    planetPosition: new THREE.Vector3(-2200, 200, -1600),
+    planetRadius: 280,
+    planetScale: 0.9,
+    planetColorA: 0x5a3010,
+    planetColorB: 0xc08040,
+    debrisCount: 340,
+    debrisScale: 1.4,
+    debrisColor: 0x886644,
+    debrisEmissive: 0x221100,
   },
   {
-    id: 'golden-dust',
-    name: 'Golden Dust',
-
-    clearColor: 0x160806,
-    fogColor: 0x1e0b03,
-    fogDensity: 0.000065,
-
-    bloomStrength: 0.82,
-    starLightColor: 0xffc05a,
-    starLightIntensity: 2.65,
-
-    nebulaColorA: 0x8a3000,
-    nebulaColorB: 0xffa000,
-    nebulaColorC: 0xff4d77,
-
-    planetPosition: new THREE.Vector3(1200, -170, -1350),
-    planetScale: 1.35,
-    planetColorA: 0x8a4100,
-    planetColorB: 0xffd36a,
-
-    debrisColor: 0xb88a50,
-    debrisEmissive: 0x4a2400,
-    debrisScale: 1.45,
-  },
-  {
-    id: 'green-anomaly',
-    name: 'Green Anomaly',
-
-    clearColor: 0x00110a,
-    fogColor: 0x002010,
-    fogDensity: 0.00008,
-
-    bloomStrength: 0.68,
-    starLightColor: 0x99ffbf,
-    starLightIntensity: 2.25,
-
-    nebulaColorA: 0x004c2a,
-    nebulaColorB: 0x00ff88,
-    nebulaColorC: 0x72ffd0,
-
-    planetPosition: new THREE.Vector3(-1450, -180, -1300),
+    id: 'deep-space',
+    name: 'DEEP SPACE',
+    clearColor: 0x010208,
+    fogColor: 0x010208,
+    fogDensity: 0.00003,
+    bloomStrength: 0.55,
+    starLightColor: 0xc0d0ff,
+    starLightIntensity: 1.4,
+    ambientColor: 0x203060,
+    ambientIntensity: 0.6,
+    nebulaColorA: 0x102040,
+    nebulaColorB: 0x2040a0,
+    nebulaColorC: 0x080820,
+    planetPosition: new THREE.Vector3(2400, -500, -2000),
+    planetRadius: 400,
     planetScale: 1.2,
-    planetColorA: 0x094c25,
-    planetColorB: 0x9affcc,
-
-    debrisColor: 0x5aa878,
-    debrisEmissive: 0x003a18,
-    debrisScale: 1.05,
+    planetColorA: 0x102050,
+    planetColorB: 0x3060c0,
+    debrisCount: 160,
+    debrisScale: 0.8,
+    debrisColor: 0x4466aa,
+    debrisEmissive: 0x001133,
   },
   {
-    id: 'red-warzone',
-    name: 'Red Warzone',
-
-    clearColor: 0x180004,
-    fogColor: 0x250006,
-    fogDensity: 0.000085,
-
-    bloomStrength: 0.9,
-    starLightColor: 0xff6040,
-    starLightIntensity: 2.9,
-
-    nebulaColorA: 0x700010,
-    nebulaColorB: 0xff2040,
-    nebulaColorC: 0xff8a35,
-
-    planetPosition: new THREE.Vector3(1000, -260, -1150),
-    planetScale: 1.32,
-    planetColorA: 0x8a0909,
-    planetColorB: 0xff4055,
-
-    debrisColor: 0xa85656,
-    debrisEmissive: 0x4a0000,
-    debrisScale: 1.6,
-  },
-
-  // New: huge red-orange star nearby, inspired by Betelgeuse / red supergiant vibes.
-  {
-    id: 'betelgeuse-flare',
-    name: 'Betelgeuse Flare',
-
-    clearColor: 0x120205,
-    fogColor: 0x1b0507,
-    fogDensity: 0.000095,
-
-    bloomStrength: 1.05,
-    starLightColor: 0xff6a32,
-    starLightIntensity: 3.2,
-
-    nebulaColorA: 0x7a1000,
-    nebulaColorB: 0xff5a16,
-    nebulaColorC: 0xffc166,
-
-    planetPosition: new THREE.Vector3(-950, -340, -1500),
+    id: 'void',
+    name: 'THE VOID',
+    clearColor: 0x000005,
+    fogColor: 0x000005,
+    fogDensity: 0.00002,
+    bloomStrength: 0.65,
+    starLightColor: 0xa080ff,
+    starLightIntensity: 1.2,
+    ambientColor: 0x300850,
+    ambientIntensity: 0.5,
+    nebulaColorA: 0x200840,
+    nebulaColorB: 0x5010a0,
+    nebulaColorC: 0x100020,
+    planetPosition: new THREE.Vector3(-1800, 400, -2400),
+    planetRadius: 260,
     planetScale: 0.85,
-    planetColorA: 0x5a1208,
-    planetColorB: 0xff8a32,
-
-    debrisColor: 0xc06a42,
-    debrisEmissive: 0x6a1800,
-    debrisScale: 1.25,
-
-    closeStarScale: 3.4,
-    closeStarPosition: new THREE.Vector3(-900, 260, -1250),
-  },
-
-  // New: fake black-hole sector. This is a safe visual imitation:
-  // dark sphere + glowing accretion ring, no real lensing shader yet.
-  {
-    id: 'event-horizon',
-    name: 'Event Horizon',
-
-    clearColor: 0x000000,
-    fogColor: 0x000006,
-    fogDensity: 0.00011,
-
-    bloomStrength: 1.1,
-    starLightColor: 0x9ac7ff,
-    starLightIntensity: 1.45,
-
-    nebulaColorA: 0x000010,
-    nebulaColorB: 0x2b0066,
-    nebulaColorC: 0x66ccff,
-
-    planetPosition: new THREE.Vector3(1800, -520, -2100),
-    planetScale: 0.65,
-    planetColorA: 0x050512,
-    planetColorB: 0x5965ff,
-
-    debrisColor: 0x444466,
-    debrisEmissive: 0x09091f,
-    debrisScale: 1.9,
-
+    planetColorA: 0x300850,
+    planetColorB: 0x9030e0,
+    debrisCount: 120,
+    debrisScale: 0.7,
+    debrisColor: 0x6633aa,
+    debrisEmissive: 0x110022,
     blackHole: true,
+  },
+  {
+    id: 'solar-flare',
+    name: 'SOLAR FLARE ZONE',
+    clearColor: 0x0a0500,
+    fogColor: 0x0a0500,
+    fogDensity: 0.00008,
+    bloomStrength: 0.7,
+    starLightColor: 0xffaa40,
+    starLightIntensity: 2.8,
+    ambientColor: 0x703010,
+    ambientIntensity: 1.1,
+    nebulaColorA: 0x602000,
+    nebulaColorB: 0xd04000,
+    nebulaColorC: 0x300800,
+    planetPosition: new THREE.Vector3(600, -200, -800),
+    planetRadius: 500,
+    planetScale: 1.6,
+    planetColorA: 0x803010,
+    planetColorB: 0xff6020,
+    debrisCount: 280,
+    debrisScale: 1.6,
+    debrisColor: 0xaa5522,
+    debrisEmissive: 0x331100,
+    closeStarScale: 2.4,
+    closeStarPosition: new THREE.Vector3(-800, 600, -2000),
   },
 ];
 
+// TODO: mozna lepsi logika pro prideleni sektoru podle vlny, zatim jednoduchy modulo
 export function getSpaceSectorForWave(wave: number): SpaceSectorDefinition {
-  const safeWave = Math.max(1, Math.floor(wave || 1));
-  const sectorIndex = Math.floor((safeWave - 1) / 3) % SPACE_SECTORS.length;
-  return SPACE_SECTORS[sectorIndex];
+  const idx = Math.floor((wave - 1) / 5) % SECTORS.length;
+  return SECTORS[idx];
 }

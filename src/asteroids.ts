@@ -52,6 +52,9 @@ const FS_TRIPLANAR = `
     gl_FragColor = vec4(lit, 1.0);
   }`;
 
+// kratky puf pak zmizi, delsi animace vypadala divne
+const DEATH_DURATION = 0.14;
+
 export interface AsteroidField {
   mesh: THREE.InstancedMesh;
   entities: Entity[];
@@ -106,6 +109,8 @@ export function createAsteroidField(
         angularAxis: randomUnitVec(),
         angularSpeed: rand(0.05, 0.4),
         scale,
+        dying: false,
+        dyingTimer: 0,
       },
     });
   }
@@ -115,24 +120,59 @@ export function createAsteroidField(
   const tmpQ = new THREE.Quaternion();
 
   function update(dt: number) {
+    let needsUpdate = false;
+
     for (const a of entities) {
+      const d = a.data;
+
+      if (d.dying) {
+        needsUpdate = true;
+        d.dyingTimer += dt;
+        const t = d.dyingTimer / DEATH_DURATION;
+        if (t >= 1.0) {
+          tmpMat.makeScale(0, 0, 0);
+          mesh.setMatrixAt(d.index, tmpMat);
+          d.dying = false;
+          continue;
+        }
+        // rychle se roztahne (prvnich 40%) pak okamzite zmizi
+        const scaleMult = t < 0.4 ? 1 + t * 1.8 : 0;
+        const s = d.scale * scaleMult;
+        tmpQ.setFromAxisAngle(d.angularAxis, d.angularSpeed * dt * 4);
+        d.quat.multiply(tmpQ);
+        tmpMat.compose(a.position, d.quat, new THREE.Vector3(s, s, s));
+        mesh.setMatrixAt(d.index, tmpMat);
+        continue;
+      }
+
       if (!a.alive) continue;
+
       a.position.addScaledVector(a.velocity, dt);
       if (Math.abs(a.position.x) > sectorHalf.x) a.velocity.x *= -1;
       if (Math.abs(a.position.y) > sectorHalf.y) a.velocity.y *= -1;
       if (Math.abs(a.position.z) > sectorHalf.z) a.velocity.z *= -1;
-      const d = a.data;
+
       tmpQ.setFromAxisAngle(d.angularAxis, d.angularSpeed * dt);
       d.quat.multiply(tmpQ);
       tmpMat.compose(a.position, d.quat, new THREE.Vector3(d.scale, d.scale, d.scale));
       mesh.setMatrixAt(d.index, tmpMat);
+      needsUpdate = true;
     }
-    mesh.instanceMatrix.needsUpdate = true;
+
+    if (needsUpdate) mesh.instanceMatrix.needsUpdate = true;
   }
 
   return { mesh, entities, update };
 }
 
+export function killAsteroidInstance(entities: Entity[], index: number) {
+  const a = entities.find(e => e.data.index === index);
+  if (!a) return;
+  a.data.dying = true;
+  a.data.dyingTimer = 0;
+}
+
+// оставил для совместимости
 export function hideAsteroidInstance(mesh: THREE.InstancedMesh, index: number) {
   const m = new THREE.Matrix4();
   m.makeScale(0, 0, 0);
