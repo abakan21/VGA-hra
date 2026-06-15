@@ -1,5 +1,6 @@
 import { Economy } from './economy';
 import { Inventory } from './inventory';
+import { Upgrades, UPGRADES } from './upgrades';
 import {
   COSMETICS,
   CosmeticItem,
@@ -12,7 +13,7 @@ import { setupBoxPreviews3d } from './boxPreview3d';
 import { playCaseSpinSound } from './caseSound';
 import { generateSkinThumbnails, getSkinThumbnail, onThumbnailsReady } from './skinThumbnails';
 
-type PanelName = 'shop' | 'inventory' | 'highscores';
+type PanelName = 'shop' | 'inventory' | 'highscores' | 'upgrades';
 
 const CARD_WIDTH = 156;
 const CARD_GAP = 12;
@@ -21,6 +22,7 @@ const TARGET_INDEX = 42;
 export function setupProgressionUi(): void {
   const economy = new Economy();
   const inventory = new Inventory();
+  const upgrades = new Upgrades();
 
   ensureMenuButtons();
   injectStyles();
@@ -84,9 +86,20 @@ export function setupProgressionUi(): void {
         <div id="progression-loot-result" class="progression-result"></div>
 
         <div class="progression-footer">
+          <button id="progression-open-upgrades">UPGRADES</button>
           <button id="progression-open-inventory">INVENTORY</button>
           <button id="progression-open-highscores">HIGHSCORES</button>
         </div>
+      </section>
+
+      <section id="progression-upgrades" class="progression-panel">
+        <div class="progression-header">
+          <h1>UPGRADES</h1>
+          <button id="progression-back-to-shop-3" class="progression-small-btn">BACK</button>
+        </div>
+        <div id="progression-upgrades-coins" class="progression-coins">Coins: 0</div>
+        <p class="progression-muted">Permanent ship upgrades — they apply to every run.</p>
+        <div id="progression-upgrades-list" class="progression-list"></div>
       </section>
 
       <section id="progression-inventory" class="progression-panel">
@@ -143,7 +156,7 @@ export function setupProgressionUi(): void {
   const showPanel = (panel: PanelName) => {
     setVisible(true);
 
-    for (const id of ['progression-shop', 'progression-inventory', 'progression-highscores']) {
+    for (const id of ['progression-shop', 'progression-inventory', 'progression-highscores', 'progression-upgrades']) {
       const el = document.getElementById(id) as HTMLDivElement;
       el.style.display = 'none';
     }
@@ -154,11 +167,53 @@ export function setupProgressionUi(): void {
     if (panel === 'shop') renderShop();
     if (panel === 'inventory') renderInventory();
     if (panel === 'highscores') renderHighscores();
+    if (panel === 'upgrades') renderUpgrades();
   };
 
   const renderShop = () => {
     economy.load();
     coinsEl.textContent = `Coins: ${economy.coins}`; inventory.load(); selectedSkinEl.textContent = `Selected skin: ${inventory.selectedShipSkin}`;
+  };
+
+  const upgradesList = document.getElementById('progression-upgrades-list') as HTMLDivElement;
+  const upgradesCoinsEl = document.getElementById('progression-upgrades-coins') as HTMLDivElement;
+
+  const renderUpgrades = () => {
+    economy.load();
+    upgrades.load();
+    upgradesCoinsEl.textContent = `Coins: ${economy.coins}`;
+
+    upgradesList.innerHTML = UPGRADES.map((def) => {
+      const lvl = upgrades.level(def.id);
+      const cost = upgrades.costFor(def.id);
+      const maxed = cost === null;
+      const pips = Array.from({ length: def.maxLevel }, (_, i) =>
+        `<span class="upgrade-pip ${i < lvl ? 'on' : ''}"></span>`).join('');
+      const btn = maxed
+        ? `<button disabled>MAXED</button>`
+        : `<button data-buy-upgrade="${def.id}">${cost} coins</button>`;
+      return `
+        <div class="progression-row">
+          <div class="progression-row-main">
+            <strong>${def.name}</strong>
+            <div class="progression-muted">${def.description}</div>
+            <div class="upgrade-pips">${pips}<span class="upgrade-level">Lv ${lvl}/${def.maxLevel}</span></div>
+          </div>
+          ${btn}
+        </div>
+      `;
+    }).join('');
+
+    upgradesList.querySelectorAll<HTMLButtonElement>('[data-buy-upgrade]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const id = button.dataset.buyUpgrade as any;
+        if (upgrades.buy(id, economy)) {
+          renderUpgrades();
+        } else {
+          upgradesCoinsEl.textContent = `Not enough coins! (${economy.coins})`;
+        }
+      });
+    });
   };
 
   const renderInventory = () => {
@@ -391,6 +446,14 @@ export function setupProgressionUi(): void {
   document.getElementById('progression-open-highscores')?.addEventListener('click', () => {
     returnFromHighscoresTo = 'shop';
     showPanel('highscores');
+  });
+
+  document.getElementById('progression-open-upgrades')?.addEventListener('click', () => {
+    showPanel('upgrades');
+  });
+
+  document.getElementById('progression-back-to-shop-3')?.addEventListener('click', () => {
+    showPanel('shop');
   });
 
   document.getElementById('progression-back-to-shop-1')?.addEventListener('click', () => {
@@ -750,6 +813,33 @@ function injectStyles(): void {
     .preview-emoji {
       display: none;
       font-size: 44px;
+    }
+
+    .upgrade-pips {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 8px;
+    }
+
+    .upgrade-pip {
+      width: 16px;
+      height: 8px;
+      border-radius: 3px;
+      background: rgba(160, 200, 255, 0.18);
+      border: 1px solid rgba(160, 200, 255, 0.3);
+    }
+
+    .upgrade-pip.on {
+      background: #6db3ff;
+      border-color: #a8d8ff;
+      box-shadow: 0 0 8px rgba(120, 200, 255, 0.7);
+    }
+
+    .upgrade-level {
+      margin-left: 8px;
+      font-size: 13px;
+      color: rgba(230, 245, 255, 0.72);
     }
 
     .preview-fallback .preview-emoji {

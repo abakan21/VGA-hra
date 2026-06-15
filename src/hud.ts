@@ -1,6 +1,12 @@
 import * as THREE from 'three';
 import { Enemy } from './enemies';
 import { Player } from './player';
+import { FUN_WEAPONS, FunWeaponMode } from './funweapons';
+
+const WEAPON_ICON: Record<FunWeaponMode, string> = {
+  normal: '🔫', chicken: '🐔', cucumber: '🥒', eggplant: '🍆',
+  duck: '🦆', banana: '🍌', donut: '🍩',
+};
 
 export class HUD {
   canvas: HTMLCanvasElement;
@@ -42,6 +48,8 @@ export class HUD {
     combo = 0,
     comboTimer = 0,
     hitMarker = 0,
+    funWeaponMode: FunWeaponMode = 'normal',
+    funWeaponTimer = 0,
   ) {
     const ctx = this.ctx;
     const w = window.innerWidth;
@@ -96,6 +104,8 @@ export class HUD {
       ctx.fillText('ROCKET READY', 20, powerY + 4);
     }
 
+    this.drawWeaponIndicator(20, h - 108, funWeaponMode, funWeaponTimer);
+
     this.drawCrosshair(w / 2, h / 2, hitMarker);
 
     if (combo >= 2) {
@@ -132,6 +142,40 @@ export class HUD {
     if (player.powers.invuln > 0 && Math.floor(performance.now() / 60) % 2 === 0) {
       ctx.fillStyle = 'rgba(255, 60, 242, 0.08)';
       ctx.fillRect(0, 0, w, h);
+    }
+  }
+
+  private drawWeaponIndicator(x: number, y: number, mode: FunWeaponMode, timer: number) {
+    const ctx = this.ctx;
+    const def = FUN_WEAPONS[mode];
+    const isFun = mode !== 'normal';
+    const name = isFun ? def.name.toUpperCase() : 'LASER';
+    const icon = WEAPON_ICON[mode] ?? '🔫';
+    const color = isFun ? '#ffd24a' : '#00e5ff';
+
+    ctx.textAlign = 'left';
+    ctx.font = '11px "Courier New", monospace';
+    ctx.fillStyle = '#8aa';
+    ctx.fillText('WEAPON', x, y - 14);
+
+    ctx.font = '20px "Courier New", monospace';
+    ctx.fillText(icon, x, y + 6);
+
+    ctx.fillStyle = color;
+    ctx.font = 'bold 15px "Courier New", monospace';
+    ctx.fillText(name, x + 30, y + 4);
+
+    // timer bar for temporary fun weapons
+    if (isFun && def.duration > 0) {
+      const frac = Math.max(0, Math.min(1, timer / def.duration));
+      const bw = 180, bh = 4, by = y + 16;
+      ctx.fillStyle = 'rgba(255,210,74,0.2)';
+      ctx.fillRect(x, by, bw, bh);
+      ctx.fillStyle = color;
+      ctx.fillRect(x, by, bw * frac, bh);
+      ctx.fillStyle = '#fff';
+      ctx.font = '11px "Courier New", monospace';
+      ctx.fillText(`${timer.toFixed(1)}s`, x + bw + 8, by + 4);
     }
   }
 

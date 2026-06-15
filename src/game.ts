@@ -20,7 +20,7 @@ import { createNebula, createPlanet, createDebris, DebrisField } from './environ
 import { loadDecor, updateDecor, DecorObject } from './decor';
 import { Entity } from './entity';
 
-import { Economy, COIN_REWARDS } from './economy'; import { Inventory } from './inventory'; import { getShipSkinModelPath, isSkinCompatibleWithShip, getCosmetic } from './cosmetics'; import { rollFunWeaponDrop, FUN_WEAPONS, FunWeaponMode } from './funweapons'; import { decorateFunProjectiles, preloadFunWeaponModel } from './funProjectileVisuals'; import { SpaceSectorDefinition, getSpaceSectorForWave } from './spaceSectors'; export type GameState = 'menu' | 'playing' | 'paused' | 'gameover';
+import { Economy, COIN_REWARDS } from './economy'; import { Inventory } from './inventory'; import { Upgrades } from './upgrades'; import { getShipSkinModelPath, isSkinCompatibleWithShip, getCosmetic } from './cosmetics'; import { rollFunWeaponDrop, FUN_WEAPONS, FunWeaponMode } from './funweapons'; import { decorateFunProjectiles, preloadFunWeaponModel } from './funProjectileVisuals'; import { SpaceSectorDefinition, getSpaceSectorForWave } from './spaceSectors'; export type GameState = 'menu' | 'playing' | 'paused' | 'gameover';
 
 export interface GameCallbacks {
   onStateChange: (s: GameState, score: number) => void;
@@ -64,7 +64,7 @@ export class Game {
   particles: ParticlePool;
   powerups: PowerupManager;
   hud: HUD;
-  audio: AudioFx; economy: Economy; inventory: Inventory; funWeaponMode: FunWeaponMode = 'normal'; funWeaponTimer = 0;
+  audio: AudioFx; economy: Economy; inventory: Inventory; upgrades: Upgrades; funWeaponMode: FunWeaponMode = 'normal'; funWeaponTimer = 0;
   starfield: THREE.Points;
   star: THREE.Mesh;
   starLight: THREE.DirectionalLight;
@@ -111,7 +111,7 @@ export class Game {
     this.camera.position.set(0, 4, 15);
 
     this.input = new Input(gl);
-    this.audio = new AudioFx(); this.economy = new Economy(); this.inventory = new Inventory();
+    this.audio = new AudioFx(); this.economy = new Economy(); this.inventory = new Inventory(); this.upgrades = new Upgrades();
 
     this.nebula = createNebula();
     this.scene.add(this.nebula);
@@ -234,8 +234,10 @@ export class Game {
   }
 
   startNew(ship: ShipDefinition = this.selectedShip) {
-  this.selectedShip = ship;
-  this.player.setShip(ship); this.applySelectedShipSkin();
+  this.selectedShip = ship; // keep the base ship (for skin id + re-applying upgrades)
+  this.upgrades.load();
+  const effectiveShip = this.upgrades.applyToShip(ship);
+  this.player.setShip(effectiveShip); this.applySelectedShipSkin();
     this.score = 0; this.economy.resetRun(); this.funWeaponMode = 'normal'; this.funWeaponTimer = 0;
     this.combo = 0;
     this.comboTimer = 0;
@@ -289,12 +291,13 @@ export class Game {
       const muzzle = this.player.entity.position.clone().addScaledVector(fwd, 3);
       const rapid = this.player.powers.rapidFire > 0;
       const vel = this.player.entity.velocity;
+      const fr = Math.max(0.3, this.player.ship?.fireRateMultiplier ?? 1);
       if (this.player.powers.tripleShot > 0) {
         this.weapons.fireTripleShot(muzzle, fwd, right, 8, vel);
-        this.player.laserCooldown = rapid ? 0.075 : 0.15;
+        this.player.laserCooldown = (rapid ? 0.075 : 0.15) / fr;
       } else {
         this.fireShipLaser(muzzle, fwd, right, vel, 10);
-        this.player.laserCooldown = rapid ? 0.065 : 0.13;
+        this.player.laserCooldown = (rapid ? 0.065 : 0.13) / fr;
       }
       this.playCurrentShotSound('laser');
     }
@@ -896,7 +899,7 @@ export class Game {
     }
 
     if (this.state === 'playing' || this.state === 'paused') {
-      this.hud.draw(dt, this.player, this.score, Math.max(1, this.enemies.wave), this.enemies.enemies, SECTOR, this.camera, this.combo, this.comboTimer, this.hitMarker);
+      this.hud.draw(dt, this.player, this.score, Math.max(1, this.enemies.wave), this.enemies.enemies, SECTOR, this.camera, this.combo, this.comboTimer, this.hitMarker, this.funWeaponMode, this.funWeaponTimer);
     } else {
       const ctx = this.hud.ctx;
       ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);

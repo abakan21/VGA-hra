@@ -1,5 +1,6 @@
 const POWERUP_VISUAL_SCALE = 1.75;
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { Entity, newId } from './entity';
 import { rand } from './util';
 
@@ -20,11 +21,25 @@ const KIND_COLORS: Record<PowerupKind, number> = {
   slowmo: 0xa060ff,
 };
 
+const KIND_MODELS: Record<PowerupKind, string> = {
+  health: '/models/powerups/heart.glb',
+  triple: '/models/powerups/star.glb',
+  shield: '/models/powerups/shield.glb',
+  rapid: '/models/powerups/lightning.glb',
+  multirocket: '/models/powerups/rocket.glb',
+  nuke: '/models/powerups/bomb.glb',
+  slowmo: '/models/powerups/hourglass.glb',
+};
+
+const POWERUP_MODEL_SIZE = 2.4;
+
 export class PowerupManager {
   scene: THREE.Scene;
   items: Powerup[] = [];
   private geo: THREE.BufferGeometry;
   private mats: Record<PowerupKind, THREE.MeshStandardMaterial>;
+  // loaded model prototypes, cloned on spawn (fallback to octahedron until ready)
+  private models: Partial<Record<PowerupKind, THREE.Object3D>> = {};
 
   constructor(scene: THREE.Scene) {
     this.scene = scene;
@@ -40,6 +55,46 @@ export class PowerupManager {
       nuke: mkMat(0x401010, 'nuke'),
       slowmo: mkMat(0x201040, 'slowmo'),
     };
+    this.preloadModels();
+  }
+
+  private preloadModels() {
+    const loader = new GLTFLoader();
+    (Object.keys(KIND_MODELS) as PowerupKind[]).forEach((kind) => {
+      loader.load(KIND_MODELS[kind], (gltf) => {
+        const model = gltf.scene;
+        model.updateMatrixWorld(true);
+        const box = new THREE.Box3().setFromObject(model);
+        const size = new THREE.Vector3();
+        const center = new THREE.Vector3();
+        box.getSize(size);
+        box.getCenter(center);
+        model.position.sub(center);
+        const maxDim = Math.max(size.x, size.y, size.z) || 1;
+
+        const pivot = new THREE.Group();
+        pivot.add(model);
+        pivot.scale.setScalar(POWERUP_MODEL_SIZE / maxDim);
+
+        // glow in the dark space + colour-code by kind
+        const tint = new THREE.Color(KIND_COLORS[kind]);
+        model.traverse((obj) => {
+          const mesh = obj as THREE.Mesh;
+          if (!mesh.isMesh) return;
+          mesh.frustumCulled = false;
+          const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+          mats.forEach((m) => {
+            const std = m as THREE.MeshStandardMaterial;
+            if (std.isMeshStandardMaterial) {
+              std.emissive = tint.clone();
+              std.emissiveIntensity = 0.7;
+            }
+          });
+        });
+
+        this.models[kind] = pivot;
+      });
+    });
   }
 
   maybeDrop(pos: THREE.Vector3, chance: number) {
@@ -57,20 +112,29 @@ export class PowerupManager {
   }
 
   spawn(pos: THREE.Vector3, kind: PowerupKind) {
-    const mesh = new THREE.Mesh(this.geo, this.mats[kind]);
-    mesh.position.copy(pos);
-    mesh.scale.setScalar(POWERUP_VISUAL_SCALE); this.scene.add(mesh);
+    const proto = this.models[kind];
+    let object3d: THREE.Object3D;
+    if (proto) {
+      object3d = proto.clone(true);
+    } else {
+      // model not loaded yet -> fall back to the glowing octahedron
+      const mesh = new THREE.Mesh(this.geo, this.mats[kind]);
+      mesh.scale.setScalar(POWERUP_VISUAL_SCALE);
+      object3d = mesh;
+    }
+    object3d.position.copy(pos);
+    this.scene.add(object3d);
     const p: Powerup = {
       id: newId(),
       kind: 'powerup',
       puKind: kind,
-      position: mesh.position,
+      position: object3d.position,
       velocity: new THREE.Vector3(rand(-2, 2), rand(-2, 2), rand(-2, 2)),
       radius: 1.6,
       hp: 1, maxHp: 1,
       alive: true,
       ttl: 18,
-      object3d: mesh,
+      object3d,
     };
     this.items.push(p);
   }
