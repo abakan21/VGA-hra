@@ -171,7 +171,60 @@
   }
 </style>
 
-  <script type="module" crossorigin src="/assets/index-Biwp3TqF.js"></script>
+
+<style id="responsive-fullscreen-fix">
+  html,
+  body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: #05010a;
+  }
+
+  #app {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  canvas#gl,
+  canvas#hud {
+    position: fixed;
+    inset: 0;
+    width: 100vw !important;
+    height: 100vh !important;
+    display: block;
+  }
+
+  canvas#gl {
+    z-index: 0;
+  }
+
+  canvas#hud {
+    z-index: 5;
+    pointer-events: none;
+  }
+
+  .overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    min-height: 100vh !important;
+    z-index: 10;
+  }
+
+  #progression-backdrop {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 99999 !important;
+  }
+</style>
+
+  <script type="module" crossorigin src="/assets/index-CiDHBM4I.js"></script>
 </head>
   <body>
     <div id="app">

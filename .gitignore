@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor / OS junk
+.DS_Store
+*.local
+
+# macOS duplicate copies (e.g. "Spaceship 2.glb", "index 2.html")
+* [0-9].glb
+* [0-9].html
+* [0-9].txt
+
+# Note: dist/ is intentionally tracked (committed build output).

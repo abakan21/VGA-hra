@@ -20,7 +20,7 @@ import { createNebula, createPlanet, createDebris, DebrisField } from './environ
 import { loadDecor, updateDecor, DecorObject } from './decor';
 import { Entity } from './entity';
 
-import { Economy, COIN_REWARDS } from './economy'; import { Inventory } from './inventory'; import { getShipSkinModelPath } from './cosmetics'; import { rollFunWeaponDrop, FUN_WEAPONS, FunWeaponMode } from './funweapons'; import { getShipSkinModelPathForShip } from './cosmetics'; import { decorateFunProjectiles } from './funProjectileVisuals'; import { SpaceSectorDefinition, getSpaceSectorForWave } from './spaceSectors'; export type GameState = 'menu' | 'playing' | 'paused' | 'gameover';
+import { Economy, COIN_REWARDS } from './economy'; import { Inventory } from './inventory'; import { getShipSkinModelPath, isSkinCompatibleWithShip, getCosmetic } from './cosmetics'; import { rollFunWeaponDrop, FUN_WEAPONS, FunWeaponMode } from './funweapons'; import { decorateFunProjectiles } from './funProjectileVisuals'; import { SpaceSectorDefinition, getSpaceSectorForWave } from './spaceSectors'; export type GameState = 'menu' | 'playing' | 'paused' | 'gameover';
 
 export interface GameCallbacks {
   onStateChange: (s: GameState, score: number) => void;
@@ -236,7 +236,7 @@ export class Game {
   startNew(ship: ShipDefinition = this.selectedShip) {
   this.selectedShip = ship;
   this.player.setShip(ship); this.applySelectedShipSkin();
-    this.score = 0; this.economy.resetRun(); this.funWeaponMode = 'normal'; this.funWeaponTimer = 0; if ('setCosmeticModelPath' in this.player) { (this.player as any).setCosmeticModelPath(getShipSkinModelPath(this.inventory.selectedShipSkin)); }
+    this.score = 0; this.economy.resetRun(); this.funWeaponMode = 'normal'; this.funWeaponTimer = 0;
     this.combo = 0;
     this.comboTimer = 0;
     this.shake = 0;
@@ -560,8 +560,15 @@ export class Game {
       const funDamage = typeof FUN_WEAPONS !== 'undefined' && this.funWeaponMode ? FUN_WEAPONS[this.funWeaponMode].damageMultiplier : 1; 
       const damage = baseDamage * shipDamage * funDamage; if (gunCount >= 2) { this.weapons.fireLaser(muzzle.clone().addScaledVector(right, -0.82), fwd, true, 280, damage, vel); 
         this.weapons.fireLaser(muzzle.clone().addScaledVector(right, 0.82), fwd, true, 280, damage, vel); } else { this.weapons.fireLaser(muzzle, fwd, true, 280, damage, vel); } 
-        decorateFunProjectiles(this.scene, this.weapons.projectiles as any, startIndex, this.funWeaponMode); } private applySelectedShipSkin() { if (!this.player || !this.inventory) return; this.inventory.load(); 
-          const shipId = this.selectedShip?.id ?? this.player.ship?.id ?? 'heavy'; const modelPath = getShipSkinModelPathForShip(this.inventory.selectedShipSkin, shipId); 
+        decorateFunProjectiles(this.scene, this.weapons.projectiles as any, startIndex, this.funWeaponMode); } private applySelectedShipSkin() { if (!this.player || !this.inventory) return; this.inventory.load();
+          const ship = this.selectedShip ?? this.player.ship ?? SHIPS[DEFAULT_SHIP_ID];
+          const shipId = ship.id;
+          const skinId = this.inventory.selectedShipSkin;
+          // The default skin (and any skin not compatible with the chosen ship) must keep the
+          // ship's own model — otherwise the Heavy Fighter renders with the Twin Scout's model.
+          const modelPath = (skinId === 'ship_default' || !isSkinCompatibleWithShip(skinId, shipId))
+            ? ship.modelPath
+            : (getCosmetic(skinId)?.modelPath ?? ship.modelPath);
           if ('setCosmeticModelPath' in this.player) { (this.player as any).setCosmeticModelPath(modelPath); } } private disposeObject3D(object: THREE.Object3D | null | undefined) {
     if (!object) return;
 
