@@ -8,6 +8,7 @@ import {
   getMenuBackgroundClass,
 } from './cosmetics';
 import { LOOT_BOXES, LootBoxId, rollLootBox } from './lootboxes';
+import { setupBoxPreviews3d } from './boxPreview3d';
 
 type PanelName = 'shop' | 'inventory' | 'highscores';
 
@@ -23,6 +24,21 @@ export function setupProgressionUi(): void {
   injectStyles();
   applySelectedBackground(inventory);
 
+  // Isometric loot-crate illustration, tinted per box tier.
+  const lootBoxArt = (light: string, base: string, dark: string, accent: string, glow: string) => `
+    <svg class="progression-box-art" viewBox="0 0 80 78" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <ellipse cx="40" cy="71" rx="29" ry="6" fill="${glow}" opacity="0.35"/>
+      <polygon points="40,36 70,22 70,52 40,66" fill="${dark}"/>
+      <polygon points="10,22 40,36 40,66 10,52" fill="${base}"/>
+      <polygon points="40,8 70,22 40,36 10,22" fill="${light}"/>
+      <polygon points="10,38 40,52 40,57 10,43" fill="${accent}" opacity="0.55"/>
+      <polygon points="40,52 70,38 70,43 40,57" fill="${accent}" opacity="0.4"/>
+      <polygon points="40,44 46,50 40,58 34,50" fill="${accent}"/>
+      <circle cx="40" cy="50" r="1.8" fill="${dark}"/>
+      <polygon points="40,14 46,22 40,30 34,22" fill="${accent}"/>
+      <polygon points="40,14 46,22 40,22" fill="#ffffff" opacity="0.5"/>
+    </svg>`;
+
   const root = document.createElement('div');
   root.id = 'progression-ui-root';
   root.innerHTML = `
@@ -37,18 +53,21 @@ export function setupProgressionUi(): void {
 
         <div class="progression-box-grid">
           <button class="progression-box progression-standard" data-box="standard">
+            <span class="progression-box-art" data-box-model="/models/boxes/chest_plain.glb" data-box-tint="#6db3ff" data-box-scale="1" data-box-roty="-0.6">${lootBoxArt('#6db3ff', '#3a78b5', '#244e78', '#d6efff', '#6db3ff')}</span>
             <span class="progression-box-title">STANDARD BOX</span>
             <span class="progression-box-price">100 coins</span>
             <span class="progression-box-desc">Small chance for rare skins</span>
           </button>
 
           <button class="progression-box progression-gold" data-box="gold">
+            <span class="progression-box-art" data-box-model="/models/boxes/chest_plain.glb" data-box-tint="#ffd76a" data-box-scale="1" data-box-roty="-0.6">${lootBoxArt('#ffd76a', '#c79a2e', '#8a6a14', '#fff4cf', '#ffd76a')}</span>
             <span class="progression-box-title">GOLD BOX</span>
             <span class="progression-box-price">250 coins</span>
             <span class="progression-box-desc">Better gold and rare chances</span>
           </button>
 
           <button class="progression-box progression-rare" data-box="legendary">
+            <span class="progression-box-art" data-box-model="/models/boxes/chest_plain.glb" data-box-tint="#c084fc" data-box-scale="1" data-box-roty="-0.6">${lootBoxArt('#c084fc', '#8a4fc4', '#5e2e8f', '#efd9ff', '#c084fc')}</span>
             <span class="progression-box-title">LEGENDARY BOX</span>
             <span class="progression-box-price">600 coins</span>
             <span class="progression-box-desc">Highest rare chance</span>
@@ -88,6 +107,7 @@ export function setupProgressionUi(): void {
   `;
 
   document.body.appendChild(root);
+  setupBoxPreviews3d();
 
   const backdrop = document.getElementById('progression-backdrop') as HTMLDivElement;
   const coinsEl = document.getElementById('progression-coins') as HTMLDivElement; const selectedSkinEl = document.getElementById('progression-selected-skin') as HTMLDivElement;
@@ -506,13 +526,52 @@ function injectStyles(): void {
     }
 
     .progression-box {
+      position: relative;
       min-height: 130px;
       padding: 18px;
+      padding-right: 92px;
       text-align: left;
       display: flex;
       flex-direction: column;
       justify-content: center;
       gap: 10px;
+      overflow: hidden;
+    }
+
+    .progression-box-art {
+      position: absolute;
+      top: 50%;
+      right: 12px;
+      width: 72px;
+      height: 72px;
+      transform: translateY(-50%);
+      filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.45));
+      transition: transform 0.25s ease;
+      pointer-events: none;
+    }
+
+    .progression-box-art > svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      animation: progression-box-float 3.2s ease-in-out infinite;
+    }
+
+    .progression-box-canvas {
+      position: absolute;
+      inset: 0;
+      width: 72px;
+      height: 72px;
+    }
+
+    .progression-box:hover .progression-box-art {
+      transform: translateY(-50%) scale(1.12);
+    }
+
+    @keyframes progression-box-float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6%); }
     }
 
     .progression-box:hover,

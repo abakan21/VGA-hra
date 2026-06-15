@@ -1,0 +1,64 @@
+{
+  "hash": "f7676a29",
+  "configHash": "beceb165",
+  "lockfileHash": "567c4a0c",
+  "browserHash": "112fc212",
+  "optimized": {
+    "three": {
+      "src": "../../node_modules/three/build/three.module.js",
+      "file": "three.js",
+      "fileHash": "c94ccb26",
+      "needsInterop": false
+    },
+    "three/examples/jsm/loaders/GLTFLoader.js": {
+      "src": "../../node_modules/three/examples/jsm/loaders/GLTFLoader.js",
+      "file": "three_examples_jsm_loaders_GLTFLoader__js.js",
+      "fileHash": "aab21e88",
+      "needsInterop": false
+    },
+    "three/examples/jsm/postprocessing/EffectComposer.js": {
+      "src": "../../node_modules/three/examples/jsm/postprocessing/EffectComposer.js",
+      "file": "three_examples_jsm_postprocessing_EffectComposer__js.js",
+      "fileHash": "6ce3b5d0",
+      "needsInterop": false
+    },
+    "three/examples/jsm/postprocessing/RenderPass.js": {
+      "src": "../../node_modules/three/examples/jsm/postprocessing/RenderPass.js",
+      "file": "three_examples_jsm_postprocessing_RenderPass__js.js",
+      "fileHash": "43ae6b9c",
+      "needsInterop": false
+    },
+    "three/examples/jsm/postprocessing/UnrealBloomPass.js": {
+      "src": "../../node_modules/three/examples/jsm/postprocessing/UnrealBloomPass.js",
+      "file": "three_examples_jsm_postprocessing_UnrealBloomPass__js.js",
+      "fileHash": "fe2de54f",
+      "needsInterop": false
+    },
+    "three/examples/jsm/postprocessing/ShaderPass.js": {
+      "src": "../../node_modules/three/examples/jsm/postprocessing/ShaderPass.js",
+      "file": "three_examples_jsm_postprocessing_ShaderPass__js.js",
+      "fileHash": "6812d402",
+      "needsInterop": false
+    },
+    "three/examples/jsm/shaders/FXAAShader.js": {
+      "src": "../../node_modules/three/examples/jsm/shaders/FXAAShader.js",
+      "file": "three_examples_jsm_shaders_FXAAShader__js.js",
+      "fileHash": "d6830cf5",
+      "needsInterop": false
+    }
+  },
+  "chunks": {
+    "chunk-YZ7RHIIL": {
+      "file": "chunk-YZ7RHIIL.js"
+    },
+    "chunk-ZBUZADME": {
+      "file": "chunk-ZBUZADME.js"
+    },
+    "chunk-BOHKNKU2": {
+      "file": "chunk-BOHKNKU2.js"
+    },
+    "chunk-UGD7UY7I": {
+      "file": "chunk-UGD7UY7I.js"
+    }
+  }
+}
