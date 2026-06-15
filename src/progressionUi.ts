@@ -9,6 +9,7 @@ import {
 } from './cosmetics';
 import { LOOT_BOXES, LootBoxId, rollLootBox } from './lootboxes';
 import { setupBoxPreviews3d } from './boxPreview3d';
+import { generateSkinThumbnails, getSkinThumbnail, onThumbnailsReady } from './skinThumbnails';
 
 type PanelName = 'shop' | 'inventory' | 'highscores';
 
@@ -108,6 +109,19 @@ export function setupProgressionUi(): void {
 
   document.body.appendChild(root);
   setupBoxPreviews3d();
+  generateSkinThumbnails();
+  // when thumbnails finish, fill in any previews that were rendered as placeholders
+  onThumbnailsReady(() => {
+    document.querySelectorAll<HTMLImageElement>('img.skin-thumb[data-skin-id]').forEach((img) => {
+      const thumb = getSkinThumbnail(img.dataset.skinId!);
+      if (thumb) {
+        img.src = thumb;
+        img.style.display = '';
+        const parent = img.parentElement;
+        if (parent) parent.classList.remove('preview-fallback');
+      }
+    });
+  });
 
   const backdrop = document.getElementById('progression-backdrop') as HTMLDivElement;
   const coinsEl = document.getElementById('progression-coins') as HTMLDivElement; const selectedSkinEl = document.getElementById('progression-selected-skin') as HTMLDivElement;
@@ -416,16 +430,37 @@ function renderPreview(item: CosmeticItem, variant: 'case' | 'inventory'): strin
   const emoji = item.type === 'shipSkin' ? '🚀' : '🌌';
   const className = variant === 'case' ? 'case-preview' : 'inventory-preview';
 
-  if (!item.previewImagePath) {
-    return `<div class="${className} preview-fallback">${emoji}</div>`;
+  // ship skins: show the real rendered 3D model
+  if (item.type === 'shipSkin') {
+    const thumb = getSkinThumbnail(item.id);
+    if (thumb) {
+      return `
+        <div class="${className}">
+          <img class="skin-thumb" data-skin-id="${item.id}" src="${thumb}" alt="${item.name}" draggable="false" />
+        </div>
+      `;
+    }
+    // not rendered yet -> placeholder that gets filled in when ready
+    return `<div class="${className} preview-fallback"><img class="skin-thumb" data-skin-id="${item.id}" alt="${item.name}" draggable="false" style="display:none" /><span class="preview-emoji">${emoji}</span></div>`;
   }
 
-  return `
-    <div class="${className}">
-      <img src="${item.previewImagePath}" alt="${item.name}" draggable="false" onerror="this.parentElement.classList.add('preview-fallback'); this.remove();" />
-      <span class="preview-emoji">${emoji}</span>
-    </div>
-  `;
+  // backgrounds: show a gradient swatch representing the menu background
+  if (item.type === 'menuBackground') {
+    return `<div class="${className}"><div class="preview-bg" style="background:${backgroundSwatch(item.backgroundClass)}"></div></div>`;
+  }
+
+  return `<div class="${className} preview-fallback">${emoji}</div>`;
+}
+
+function backgroundSwatch(bgClass?: string): string {
+  switch (bgClass) {
+    case 'bg-gold':
+      return 'radial-gradient(circle at 38% 32%, rgba(255,205,95,0.95), transparent 60%), radial-gradient(circle at 72% 72%, rgba(205,125,30,0.7), transparent 55%), #14100a';
+    case 'bg-rare':
+      return 'radial-gradient(circle at 38% 32%, rgba(185,115,255,0.95), transparent 60%), radial-gradient(circle at 72% 72%, rgba(95,45,185,0.8), transparent 55%), #0e0a1c';
+    default:
+      return 'radial-gradient(circle at 38% 32%, rgba(125,70,205,0.9), transparent 60%), radial-gradient(circle at 72% 72%, rgba(60,85,205,0.7), transparent 55%), #0a0e1c';
+  }
 }
 
 function applySelectedBackground(inventory: Inventory): void {
@@ -691,6 +726,15 @@ function injectStyles(): void {
       max-height: 82px;
       object-fit: contain;
       filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.25));
+    }
+
+    .preview-bg {
+      width: 100%;
+      height: 100%;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background-size: cover;
+      background-position: center;
     }
 
     .preview-emoji {

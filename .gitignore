@@ -14,4 +14,8 @@ npm-debug.log*
 * [0-9].html
 * [0-9].txt
 
-# Note: dist/ is intentionally tracked (committed build output).
+# Build output
+dist/
+
+# Claude Code local files
+.claude/

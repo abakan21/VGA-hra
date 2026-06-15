@@ -48,7 +48,7 @@ export const COSMETICS: CosmeticItem[] = [
     compatibleShip: 'scout',
     name: 'Standard Patrol',
     rarity: 'standard',
-    modelPath: '/models/standart/ship_1.glb',
+    modelPath: '/models/standart/ship_01.glb',
     previewImagePath: '/previews/standard_01.png',
   },
   {
@@ -95,6 +95,15 @@ export const COSMETICS: CosmeticItem[] = [
     rarity: 'rare',
     modelPath: '/models/rare/ship_2.glb',
     previewImagePath: '/previews/rare_02.png',
+  },
+  {
+    // joke skin: an actual cruise ship in space
+    id: 'ship_cruise',
+    type: 'shipSkin',
+    compatibleShip: 'both',
+    name: 'Booze Cruise',
+    rarity: 'rare',
+    modelPath: '/models/joke/cruise_ship.glb',
   },
   {
     id: 'bg_default',
