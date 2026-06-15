@@ -34,11 +34,24 @@ function decorateProjectile(projectile: ProjectileLike, mode: FunWeaponMode): vo
 
   hideOriginalProjectile(projectile.object3d);
 
+  const modelPath = FUN_WEAPONS[mode].projectileModelPath;
+  if (!modelPath) {
+    projectile.object3d.add(createPlaceholder(mode));
+    return;
+  }
+
+  // if the model is already cached, attach it immediately so there is no
+  // egg-like placeholder flash before the chicken appears
+  const cached = cache.get(modelPath);
+  if (cached) {
+    const model = cached.clone(true);
+    normalizeProjectileModel(model, mode);
+    projectile.object3d.add(model);
+    return;
+  }
+
   const placeholder = createPlaceholder(mode);
   projectile.object3d.add(placeholder);
-
-  const modelPath = FUN_WEAPONS[mode].projectileModelPath;
-  if (!modelPath) return;
 
   loadModel(modelPath).then((source) => {
     if (!source || !projectile.object3d) return;
@@ -49,6 +62,13 @@ function decorateProjectile(projectile: ProjectileLike, mode: FunWeaponMode): vo
     normalizeProjectileModel(model, mode);
     projectile.object3d.add(model);
   });
+}
+
+// Preload a fun-weapon projectile model so the first shots already show the
+// real model (chicken/cucumber/eggplant) instead of the placeholder.
+export function preloadFunWeaponModel(mode: FunWeaponMode): void {
+  const modelPath = FUN_WEAPONS[mode]?.projectileModelPath;
+  if (modelPath) loadModel(modelPath);
 }
 
 function hideOriginalProjectile(object: THREE.Object3D): void {
@@ -100,12 +120,17 @@ function createPlaceholder(mode: FunWeaponMode): THREE.Object3D {
     const body = new THREE.Mesh(
       new THREE.SphereGeometry(0.42, 16, 12),
       new THREE.MeshStandardMaterial({
-        color: 0xffffff,
-        emissive: 0xffddaa,
-        emissiveIntensity: 0.22,
-        roughness: 0.65,
+        color: 0xb0402a,
+        emissive: 0x3a1208,
+        emissiveIntensity: 0.2,
+        roughness: 0.7,
       }),
     );
+    const comb = new THREE.Mesh(
+      new THREE.SphereGeometry(0.16, 8, 6),
+      new THREE.MeshStandardMaterial({ color: 0xdd2222, emissive: 0x550808, emissiveIntensity: 0.2 }),
+    );
+    comb.position.set(0, 0.4, 0.2);
     const beak = new THREE.Mesh(
       new THREE.ConeGeometry(0.16, 0.32, 8),
       new THREE.MeshStandardMaterial({
@@ -116,7 +141,7 @@ function createPlaceholder(mode: FunWeaponMode): THREE.Object3D {
     );
     beak.rotation.x = Math.PI / 2;
     beak.position.z = 0.42;
-    group.add(body, beak);
+    group.add(body, comb, beak);
   }
 
   group.scale.setScalar(1.25);
@@ -161,7 +186,7 @@ function normalizeProjectileModel(model: THREE.Object3D, mode: FunWeaponMode): v
 
   model.position.sub(center);
 
-  const targetSize = mode === 'chicken' ? 1.15 : 1.25;
+  const targetSize = mode === 'chicken' ? 2.0 : 1.25;
   model.scale.multiplyScalar(targetSize / maxDim);
 
   model.rotation.y += Math.PI;

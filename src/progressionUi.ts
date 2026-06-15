@@ -9,6 +9,7 @@ import {
 } from './cosmetics';
 import { LOOT_BOXES, LootBoxId, rollLootBox } from './lootboxes';
 import { setupBoxPreviews3d } from './boxPreview3d';
+import { playCaseSpinSound } from './caseSound';
 import { generateSkinThumbnails, getSkinThumbnail, onThumbnailsReady } from './skinThumbnails';
 
 type PanelName = 'shop' | 'inventory' | 'highscores';
@@ -298,6 +299,15 @@ export function setupProgressionUi(): void {
         track.style.transition = 'transform 4.4s cubic-bezier(0.08, 0.76, 0.12, 1)';
         track.style.transform = `translateX(${-targetOffset}px)`;
       });
+    });
+
+    // play the case-opening ticks synchronously on the click (user gesture, so
+    // the AudioContext can resume); the schedule matches the 4.4s spin easing
+    playCaseSpinSound({
+      durationMs: 4400,
+      totalDistance: targetOffset,
+      spacing: CARD_WIDTH + CARD_GAP,
+      p1x: 0.08, p1y: 0.76, p2x: 0.12, p2y: 1,
     });
 
     window.setTimeout(() => {

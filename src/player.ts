@@ -72,6 +72,7 @@ export class Player { cosmeticModelPath: string | null = null;
   laserCooldown = 0;
   rocketLockTarget: Entity | null = null;
   ship: ShipDefinition;
+  private modelLoadGen = 0;
 
   constructor(scene: THREE.Scene, ship: ShipDefinition) {
     this.ship = ship;
@@ -117,8 +118,12 @@ export class Player { cosmeticModelPath: string | null = null;
   }
 
   private loadShipModel(url: string) {
+    // guard against overlapping async loads (setShip + setCosmeticModelPath
+    // can both be in flight) — only the most recent request may add its model.
+    const gen = ++this.modelLoadGen;
     const loader = new GLTFLoader();
     loader.load(url, (gltf) => {
+      if (gen !== this.modelLoadGen) return; // superseded by a newer load
       const inner = gltf.scene;
 
       const box = new THREE.Box3().setFromObject(inner);
@@ -157,9 +162,12 @@ export class Player { cosmeticModelPath: string | null = null;
         }
       });
 
+      this.shipRoot.clear();
       this.shipRoot.add(model);
     }, undefined, (err) => {
+      if (gen !== this.modelLoadGen) return; // superseded by a newer load
       console.warn('Ship model load failed, using fallback geometry', err);
+      this.shipRoot.clear();
       const fallback = new THREE.Mesh(
         new THREE.ConeGeometry(1.4, 4.5, 12).rotateX(Math.PI / 2),
         new THREE.MeshStandardMaterial({

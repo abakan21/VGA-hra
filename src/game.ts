@@ -20,7 +20,7 @@ import { createNebula, createPlanet, createDebris, DebrisField } from './environ
 import { loadDecor, updateDecor, DecorObject } from './decor';
 import { Entity } from './entity';
 
-import { Economy, COIN_REWARDS } from './economy'; import { Inventory } from './inventory'; import { getShipSkinModelPath, isSkinCompatibleWithShip, getCosmetic } from './cosmetics'; import { rollFunWeaponDrop, FUN_WEAPONS, FunWeaponMode } from './funweapons'; import { decorateFunProjectiles } from './funProjectileVisuals'; import { SpaceSectorDefinition, getSpaceSectorForWave } from './spaceSectors'; export type GameState = 'menu' | 'playing' | 'paused' | 'gameover';
+import { Economy, COIN_REWARDS } from './economy'; import { Inventory } from './inventory'; import { getShipSkinModelPath, isSkinCompatibleWithShip, getCosmetic } from './cosmetics'; import { rollFunWeaponDrop, FUN_WEAPONS, FunWeaponMode } from './funweapons'; import { decorateFunProjectiles, preloadFunWeaponModel } from './funProjectileVisuals'; import { SpaceSectorDefinition, getSpaceSectorForWave } from './spaceSectors'; export type GameState = 'menu' | 'playing' | 'paused' | 'gameover';
 
 export interface GameCallbacks {
   onStateChange: (s: GameState, score: number) => void;
@@ -534,7 +534,8 @@ export class Game {
       }
       this.score += Math.round(baseScore * mult); 
       this.economy.add(e.kind === 'boss' ? COIN_REWARDS.boss : e.kind === 'chaser' ? COIN_REWARDS.chaser : COIN_REWARDS.drone); 
-      const funDrop = rollFunWeaponDrop(); if (funDrop) { this.funWeaponMode = funDrop; this.funWeaponTimer = FUN_WEAPONS[funDrop].duration; 
+      const funDrop = rollFunWeaponDrop(); if (funDrop) { this.funWeaponMode = funDrop; this.funWeaponTimer = FUN_WEAPONS[funDrop].duration;
+        preloadFunWeaponModel(funDrop);
         this.hud.showMessage(`${FUN_WEAPONS[funDrop].name}!`, 1.4); }
       // console.log('score', this.score, 'combo', this.combo, 'mult', mult);
     }

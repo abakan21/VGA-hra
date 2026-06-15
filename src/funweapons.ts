@@ -29,7 +29,7 @@ export const FUN_WEAPONS: Record<FunWeaponMode, FunWeaponDefinition> = {
     name: 'Chicken Blaster',
     duration: 15,
     damageMultiplier: 1.2,
-    projectileModelPath: '/models/shoot/chicken.glb',
+    projectileModelPath: '/models/shoot/Hen.glb',
     soundPath: '/sounds/shoot/chicken.mp3',
   },
   cucumber: {
@@ -37,7 +37,7 @@ export const FUN_WEAPONS: Record<FunWeaponMode, FunWeaponDefinition> = {
     name: 'Cucumber Cannon',
     duration: 12,
     damageMultiplier: 1.5,
-    projectileModelPath: '/models/shoot/cucumber.glb',
+    projectileModelPath: '/models/shoot/Cucumber.glb',
     soundPath: '/sounds/shoot/cucumber.mp3',
   },
   eggplant: {
@@ -45,7 +45,7 @@ export const FUN_WEAPONS: Record<FunWeaponMode, FunWeaponDefinition> = {
     name: 'Eggplant Destroyer',
     duration: 10,
     damageMultiplier: 1.7,
-    projectileModelPath: '/models/shoot/eggplant.glb',
+    projectileModelPath: '/models/shoot/Eggplant.glb',
     soundPath: '/sounds/shoot/eggplant.mp3',
   },
 };
