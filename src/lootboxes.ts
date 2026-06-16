@@ -53,6 +53,9 @@ export const DUPLICATE_REFUND: Record<Rarity, number> = {
   rare: 200,
 };
 
+// number of consecutive non-rare boxes after which a rare is guaranteed
+export const PITY_THRESHOLD = 9;
+
 export function rollLootBox(boxId: LootBoxId): LootResult {
   const box = LOOT_BOXES[boxId];
   const rarity = rollRarity(box.chances);
@@ -63,6 +66,28 @@ export function rollLootBox(boxId: LootBoxId): LootResult {
   return {
     item,
     duplicateRefund: DUPLICATE_REFUND[item.rarity],
+  };
+}
+
+// Roll with a pity counter: if `pityCount` boxes in a row gave no rare, the
+// next one is forced to be rare. Returns the result and the updated counter.
+export function rollLootBoxWithPity(
+  boxId: LootBoxId,
+  pityCount: number,
+): { result: LootResult; pityCount: number } {
+  const box = LOOT_BOXES[boxId];
+  let rarity = rollRarity(box.chances);
+  if (rarity !== 'rare' && pityCount >= PITY_THRESHOLD) {
+    rarity = 'rare';
+  }
+  const pool = COSMETICS.filter((item) => item.rarity === rarity);
+  const safePool = pool.length > 0 ? pool : COSMETICS;
+  const item = safePool[Math.floor(Math.random() * safePool.length)];
+  const nextPity = item.rarity === 'rare' ? 0 : pityCount + 1;
+
+  return {
+    result: { item, duplicateRefund: DUPLICATE_REFUND[item.rarity] },
+    pityCount: nextPity,
   };
 }
 

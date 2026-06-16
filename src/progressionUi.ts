@@ -8,9 +8,9 @@ import {
   RARITY_COLOR,
   getMenuBackgroundClass,
 } from './cosmetics';
-import { LOOT_BOXES, LootBoxId, rollLootBox } from './lootboxes';
+import { LOOT_BOXES, LootBoxId, rollLootBoxWithPity, PITY_THRESHOLD } from './lootboxes';
 import { setupBoxPreviews3d } from './boxPreview3d';
-import { playCaseSpinSound } from './caseSound';
+import { playCaseSpinSound, playRareFanfare } from './caseSound';
 import { generateSkinThumbnails, getSkinThumbnail, onThumbnailsReady } from './skinThumbnails';
 
 type PanelName = 'shop' | 'inventory' | 'highscores' | 'upgrades';
@@ -172,7 +172,9 @@ export function setupProgressionUi(): void {
 
   const renderShop = () => {
     economy.load();
-    coinsEl.textContent = `Coins: ${economy.coins}`; inventory.load(); selectedSkinEl.textContent = `Selected skin: ${inventory.selectedShipSkin}`;
+    coinsEl.textContent = `Coins: ${economy.coins}`; inventory.load();
+    const remaining = Math.max(1, PITY_THRESHOLD + 1 - loadPity());
+    selectedSkinEl.textContent = `Selected skin: ${inventory.selectedShipSkin}  ·  Rare guaranteed in ≤${remaining} box${remaining === 1 ? '' : 'es'}`;
   };
 
   const upgradesList = document.getElementById('progression-upgrades-list') as HTMLDivElement;
@@ -192,11 +194,14 @@ export function setupProgressionUi(): void {
       const btn = maxed
         ? `<button disabled>MAXED</button>`
         : `<button data-buy-upgrade="${def.id}">${cost} coins</button>`;
+      const current = upgrades.totalBonusLabel(def.id, lvl);
+      const next = maxed ? '' : ` <span class="upgrade-next">→ next ${upgrades.totalBonusLabel(def.id, lvl + 1)}</span>`;
       return `
         <div class="progression-row">
           <div class="progression-row-main">
             <strong>${def.name}</strong>
             <div class="progression-muted">${def.description}</div>
+            <div class="upgrade-total">Total bonus: <b>${current}</b>${next}</div>
             <div class="upgrade-pips">${pips}<span class="upgrade-level">Lv ${lvl}/${def.maxLevel}</span></div>
           </div>
           ${btn}
@@ -336,7 +341,10 @@ export function setupProgressionUi(): void {
     setBoxButtonsEnabled(false);
     resultEl.textContent = 'Opening...';
 
-    const result = rollLootBox(boxId);
+    const pity = loadPity();
+    const roll = rollLootBoxWithPity(boxId, pity);
+    const result = roll.result;
+    savePity(roll.pityCount);
     const items = buildRouletteItems(result.item);
     renderRoulette(items);
 
@@ -377,6 +385,11 @@ export function setupProgressionUi(): void {
       resultEl.innerHTML = isNew
         ? `<span style="color:${color}">Unlocked: ${result.item.name} [${RARITY_LABEL[result.item.rarity]}]</span>`
         : `<span style="color:${color}">Duplicate: ${result.item.name}. Refund: ${result.duplicateRefund} coins.</span>`;
+
+      if (result.item.rarity === 'rare') {
+        playRareFanfare();
+        showRareBurst(result.item.name, color);
+      }
 
       spinning = false;
       setBoxButtonsEnabled(true);
@@ -523,6 +536,44 @@ function renderPreview(item: CosmeticItem, variant: 'case' | 'inventory'): strin
   }
 
   return `<div class="${className} preview-fallback">${emoji}</div>`;
+}
+
+const PITY_STORAGE_KEY = 'stellar-drift-pity-v1';
+
+function loadPity(): number {
+  try {
+    const v = Number(localStorage.getItem(PITY_STORAGE_KEY) ?? 0);
+    return Number.isFinite(v) && v >= 0 ? Math.floor(v) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function savePity(count: number): void {
+  try {
+    localStorage.setItem(PITY_STORAGE_KEY, String(Math.max(0, Math.floor(count))));
+  } catch {
+    // ignore
+  }
+}
+
+// Full-screen celebration burst when a rare item drops.
+function showRareBurst(name: string, color: string): void {
+  const overlay = document.createElement('div');
+  overlay.className = 'rare-burst';
+  const confetti = Array.from({ length: 28 }, (_, i) => {
+    const left = Math.round((i / 28) * 100);
+    const delay = (i % 7) * 40;
+    const hue = i % 3 === 0 ? color : i % 3 === 1 ? '#ffd76a' : '#6db3ff';
+    return `<span class="rare-confetti" style="left:${left}%;background:${hue};animation-delay:${delay}ms"></span>`;
+  }).join('');
+  overlay.innerHTML = `
+    <div class="rare-flash" style="--rare-color:${color}"></div>
+    ${confetti}
+    <div class="rare-burst-text" style="color:${color}">★ RARE ★<small>${name}</small></div>
+  `;
+  document.body.appendChild(overlay);
+  window.setTimeout(() => overlay.remove(), 2600);
 }
 
 function backgroundSwatch(bgClass?: string): string {
@@ -815,11 +866,92 @@ function injectStyles(): void {
       font-size: 44px;
     }
 
+    .upgrade-total {
+      margin-top: 6px;
+      font-size: 14px;
+      color: rgba(230, 245, 255, 0.85);
+    }
+
+    .upgrade-total b {
+      color: #6dff9e;
+      font-weight: 700;
+    }
+
+    .upgrade-next {
+      color: rgba(255, 215, 106, 0.9);
+      font-size: 13px;
+    }
+
     .upgrade-pips {
       display: flex;
       align-items: center;
       gap: 5px;
       margin-top: 8px;
+    }
+
+    .rare-burst {
+      position: fixed;
+      inset: 0;
+      z-index: 100000;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .rare-flash {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at center, var(--rare-color), transparent 60%);
+      opacity: 0;
+      animation: rare-flash-anim 0.7s ease-out;
+    }
+
+    @keyframes rare-flash-anim {
+      0% { opacity: 0; }
+      20% { opacity: 0.5; }
+      100% { opacity: 0; }
+    }
+
+    .rare-burst-text {
+      position: absolute;
+      top: 38%;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-size: 64px;
+      font-weight: 900;
+      letter-spacing: 0.1em;
+      text-shadow: 0 0 30px currentColor, 0 0 60px currentColor;
+      animation: rare-text-anim 2.4s ease-out forwards;
+    }
+
+    .rare-burst-text small {
+      display: block;
+      font-size: 26px;
+      margin-top: 8px;
+      color: #fff;
+      text-shadow: 0 0 16px rgba(255,255,255,0.6);
+    }
+
+    @keyframes rare-text-anim {
+      0% { transform: scale(0.4); opacity: 0; }
+      15% { transform: scale(1.15); opacity: 1; }
+      30% { transform: scale(1); }
+      80% { opacity: 1; }
+      100% { transform: scale(1); opacity: 0; }
+    }
+
+    .rare-confetti {
+      position: absolute;
+      top: -20px;
+      width: 10px;
+      height: 16px;
+      border-radius: 2px;
+      animation: rare-confetti-fall 2.2s linear forwards;
+    }
+
+    @keyframes rare-confetti-fall {
+      0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(110vh) rotate(540deg); opacity: 0.7; }
     }
 
     .upgrade-pip {

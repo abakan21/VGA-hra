@@ -20,7 +20,7 @@ import { createNebula, createPlanet, createDebris, DebrisField } from './environ
 import { loadDecor, updateDecor, DecorObject } from './decor';
 import { Entity } from './entity';
 
-import { Economy, COIN_REWARDS } from './economy'; import { Inventory } from './inventory'; import { Upgrades } from './upgrades'; import { getShipSkinModelPath, isSkinCompatibleWithShip, getCosmetic } from './cosmetics'; import { rollFunWeaponDrop, FUN_WEAPONS, FunWeaponMode } from './funweapons'; import { decorateFunProjectiles, preloadFunWeaponModel } from './funProjectileVisuals'; import { SpaceSectorDefinition, getSpaceSectorForWave } from './spaceSectors'; export type GameState = 'menu' | 'playing' | 'paused' | 'gameover';
+import { Economy, COIN_REWARDS } from './economy'; import { Inventory } from './inventory'; import { Upgrades } from './upgrades'; import { getShipSkinModelPath, isSkinCompatibleWithShip, getCosmetic } from './cosmetics'; import { rollFunWeaponDrop, FUN_WEAPONS, FunWeaponMode } from './funweapons'; import { decorateFunProjectiles, preloadFunWeaponModel } from './funProjectileVisuals'; import { hasSynthShot, playFunWeaponShot } from './funWeaponSounds'; import { SpaceSectorDefinition, getSpaceSectorForWave } from './spaceSectors'; export type GameState = 'menu' | 'playing' | 'paused' | 'gameover';
 
 export interface GameCallbacks {
   onStateChange: (s: GameState, score: number) => void;
@@ -422,6 +422,7 @@ export class Game {
         this.damageEnemy(e, 10);
         const dead = this.player.takeDamage(10);
         this.audio.hit();
+        this.shake = Math.max(this.shake, 0.7);
         if (dead) return;
       }
     }
@@ -430,6 +431,7 @@ export class Game {
       if (!a.alive) continue;
       if (sphereHit(player, a)) {
         this.player.takeDamage(4);
+        this.shake = Math.max(this.shake, 0.35);
         // push the player away so they dont get stuck inside
         const push = player.position.clone().sub(a.position).normalize().multiplyScalar(12);
         player.velocity.add(push);
@@ -546,6 +548,11 @@ export class Game {
   }
 
   private playCurrentShotSound(kind: 'laser' | 'rocket') {
+    // joke weapons with their own synthesized sound (duck/banana/donut)
+    if (hasSynthShot(this.funWeaponMode)) {
+      playFunWeaponShot(this.funWeaponMode);
+      return;
+    }
     const soundPath = FUN_WEAPONS[this.funWeaponMode].soundPath;
     if (soundPath) {
       const audio = new Audio(soundPath);
@@ -865,7 +872,7 @@ export class Game {
     // camera shake — just random offset each frame, good enough
     let shakeX = 0, shakeY = 0, shakeZ = 0;
     if (this.shake > 0) {
-      const s = this.shake * 0.8;
+      const s = this.shake * 1.3;
       shakeX = (Math.random() - 0.5) * s;
       shakeY = (Math.random() - 0.5) * s;
       shakeZ = (Math.random() - 0.5) * s;

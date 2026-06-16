@@ -56,6 +56,13 @@ export class Upgrades {
     return this.levels[id] ?? 0;
   }
 
+  // Human-readable total bonus this upgrade gives at a given level.
+  totalBonusLabel(id: UpgradeId, level: number): string {
+    const def = UPGRADES.find((u) => u.id === id)!;
+    if (id === 'hull') return `+${level * def.perLevel} HP`;
+    return `+${Math.round(level * def.perLevel * 100)}%`;
+  }
+
   isMaxed(id: UpgradeId): boolean {
     const def = UPGRADES.find((u) => u.id === id)!;
     return this.level(id) >= def.maxLevel;

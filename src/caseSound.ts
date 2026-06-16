@@ -54,6 +54,38 @@ export function playCaseSpinSound(opts: SpinSoundOptions): void {
   }
 }
 
+// Triumphant ascending arpeggio for a rare drop.
+export function playRareFanfare(): void {
+  const audio = getCtx();
+  if (!audio) return;
+  if (audio.state === 'suspended') audio.resume().catch(() => undefined);
+
+  const start = audio.currentTime + 0.02;
+  // C5 E5 G5 C6, then a sustained C6 chord
+  const notes = [523.25, 659.25, 783.99, 1046.5];
+  notes.forEach((freq, i) => {
+    const t = start + i * 0.11;
+    playTone(audio, freq, t, 0.22, 0.16, 'triangle');
+  });
+  // final shimmer chord
+  const chordAt = start + notes.length * 0.11;
+  [1046.5, 1318.5, 1568.0].forEach((freq) => playTone(audio, freq, chordAt, 0.7, 0.1, 'triangle'));
+}
+
+function playTone(audio: AudioContext, freq: number, when: number, dur: number, peak: number, type: OscillatorType): void {
+  const osc = audio.createOscillator();
+  const gain = audio.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0.0001, when);
+  gain.gain.exponentialRampToValueAtTime(peak, when + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+  osc.connect(gain);
+  gain.connect(audio.destination);
+  osc.start(when);
+  osc.stop(when + dur + 0.05);
+}
+
 function scheduleTick(audio: AudioContext, when: number, progress: number): void {
   // a short, dry percussive click; slightly lower & softer as the spin ends
   const osc = audio.createOscillator();
