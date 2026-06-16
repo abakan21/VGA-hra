@@ -1,8 +1,8 @@
-import { Game, GameState } from './game';
-import { loadHighscores, renderHighscores, saveHighscore } from './highscore';
-import { SHIPS } from './ships';
+import { Game, GameState } from './components/game';
+import { loadHighscores, renderHighscores, saveHighscore } from './components/highscore';
+import { SHIPS } from './components/ships';
 
-    import { setupProgressionUi } from './progressionUi'; import { setupShipSelectPreviews } from './shipPreview'; import { setupShipSelectionStatus } from './shipSelectionStatus'; const gl = document.getElementById('gl') as HTMLCanvasElement;
+    import { setupProgressionUi } from './components/progressionUi'; import { setupShipSelectPreviews } from './components/shipPreview'; import { setupShipSelectionStatus } from './components/shipSelectionStatus'; const gl = document.getElementById('gl') as HTMLCanvasElement;
 const hudCanvas = document.getElementById('hud') as HTMLCanvasElement;
 
 const menuEl = document.getElementById('menu')!;

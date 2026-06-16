@@ -54,8 +54,8 @@ export class AudioFx {
   }
 
   // parametry jsem ladil poslechem, neni veda
-  laser()       { this.beep(900, 0.08, 'square', 0.12, -500); }
-  rocket()      { this.beep(220, 0.35, 'sawtooth', 0.18, 120); this.noise(0.3, 0.08, 800, 0.8); }
+  laser()       { this.beep(900, 0.1, 'square', 0.5, -560); this.beep(1400, 0.06, 'square', 0.28, -700); }
+  rocket()      { this.beep(220, 0.35, 'sawtooth', 0.5, 120); this.noise(0.3, 0.22, 800, 0.8); }
   explode()     { this.noise(0.6, 0.45, 260, 0.6); this.beep(90, 0.3, 'sawtooth', 0.25, -40); }
   bigExplode()  { this.noise(1.1, 0.55, 160, 0.5); this.beep(60, 0.7, 'square', 0.3, -30); }
   hit()         { this.beep(150, 0.1, 'square', 0.18, -80); }

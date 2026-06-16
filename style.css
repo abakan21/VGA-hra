@@ -1,0 +1,204 @@
+html, body {
+  margin: 0; padding: 0; width: 100%; height: 100%;
+  overflow: hidden; background: #000; color: #fff;
+  font-family: 'Courier New', ui-monospace, monospace;
+  user-select: none;
+}
+#app { position: relative; width: 100vw; height: 100vh; }
+canvas { display: block; }
+#hud {
+  position: absolute; inset: 0; pointer-events: none;
+  width: 100%; height: 100%;
+}
+.overlay {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: radial-gradient(circle at center, rgba(20,0,40,0.75), rgba(0,0,0,0.95));
+  text-align: center;
+  z-index: 10;
+}
+.overlay.hidden { display: none; }
+.overlay h1 {
+  font-size: 72px; margin: 0 0 12px;
+  color: #ff3cf2;
+  text-shadow: 0 0 20px #ff3cf2, 0 0 40px #7a00ff, 0 0 80px #00e5ff;
+  letter-spacing: 8px;
+}
+.overlay h2 { font-size: 28px; color: #00e5ff; margin: 0 0 36px; letter-spacing: 4px; }
+.overlay p { color: #bcd; max-width: 520px; line-height: 1.6; }
+.overlay button {
+  pointer-events: auto;
+  background: transparent; color: #00e5ff;
+  border: 2px solid #00e5ff; padding: 14px 36px; margin: 8px;
+  font-size: 20px; font-family: inherit; letter-spacing: 4px;
+  cursor: pointer; text-transform: uppercase;
+  transition: all 0.15s;
+}
+.overlay button:hover {
+  background: #00e5ff; color: #000;
+  box-shadow: 0 0 20px #00e5ff;
+}
+.help {
+  margin-top: 24px; font-size: 12px; color: #889;
+  line-height: 1.7; letter-spacing: 1px;
+}
+.help b { color: #ff3cf2; }
+#scoreline { font-size: 42px; color: #00e5ff; margin: 12px 0 24px;
+  text-shadow: 0 0 12px #00e5ff; }
+#highscores { font-size: 14px; color: #aac; margin: 0 0 24px; }
+#highscores div { padding: 2px 0; }
+#crosshair { position: absolute; left: 50%; top: 50%; width: 40px; height: 40px;
+  transform: translate(-50%, -50%); pointer-events: none; }
+
+.ship-grid {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  align-items: stretch;
+  margin: 24px 0;
+  flex-wrap: wrap;
+}
+
+.ship-card {
+  width: 280px;
+  min-height: 240px;
+  padding: 18px;
+  border: 1px solid rgba(120, 220, 255, 0.7);
+  border-radius: 14px;
+  background: rgba(5, 10, 25, 0.9);
+  color: white;
+  cursor: pointer;
+  text-align: left;
+  box-shadow: 0 0 24px rgba(0, 180, 255, 0.25);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.ship-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255, 220, 120, 0.95);
+  box-shadow: 0 0 36px rgba(255, 200, 80, 0.35);
+}
+
+.ship-card h2 {
+  margin-top: 0;
+  color: #8be9ff;
+  letter-spacing: 2px;
+}
+
+.ship-card p {
+  margin: 7px 0;
+  color: #c9d8ff;
+  letter-spacing: 1px;
+}
+
+.ship-preview {
+  width: 100%;
+  height: 140px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 12px;
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at center, rgba(0, 220, 255, 0.20), transparent 62%),
+    rgba(255, 255, 255, 0.045);
+  overflow: hidden;
+}
+
+.ship-preview img {
+  max-width: 92%;
+  max-height: 128px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 18px rgba(0, 220, 255, 0.55));
+}
+
+.ship-preview span {
+  display: none;
+  font-size: 58px;
+  filter: drop-shadow(0 0 14px rgba(0, 220, 255, 0.55));
+}
+
+.ship-preview-fallback span {
+  display: block;
+}
+
+.ship-preview-heavy {
+  background:
+    radial-gradient(circle at center, rgba(255, 210, 90, 0.16), transparent 64%),
+    rgba(255, 255, 255, 0.045);
+}
+
+.ship-preview-scout {
+  background:
+    radial-gradient(circle at center, rgba(0, 220, 255, 0.20), transparent 64%),
+    rgba(255, 255, 255, 0.045);
+}
+
+.selected-skin-label {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(120, 220, 255, 0.28);
+  color: #ffd76a;
+  font-size: 14px;
+  line-height: 1.35;
+  text-shadow: 0 0 10px rgba(255, 210, 90, 0.35);
+}
+
+.ship-preview-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+#menu #highscores {
+  display: none !important;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: #05010a;
+}
+
+#app {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+canvas#gl,
+canvas#hud {
+  position: fixed;
+  inset: 0;
+  width: 100vw !important;
+  height: 100vh !important;
+  display: block;
+}
+
+canvas#gl {
+  z-index: 0;
+}
+
+canvas#hud {
+  z-index: 5;
+  pointer-events: none;
+}
+
+.overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  min-height: 100vh !important;
+  z-index: 10;
+}
+
+#progression-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 99999 !important;
+}

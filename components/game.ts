@@ -4,6 +4,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
+import { VIGNETTE_VS, VIGNETTE_FS } from '../shaders/vignette';
 
 import { Input } from './input';
 import { Player } from './player';
@@ -30,21 +31,6 @@ const SECTOR = new THREE.Vector3(1000, 700, 1000);
 const FIXED_DT = 1 / 60;
 
 // vignette + film grain shader, wrote this myself based on some shadertoy thing
-const VIGNETTE_FS = `
-  uniform sampler2D tDiffuse;
-  uniform float uGrain;
-  varying vec2 vUv;
-  float rand(vec2 c){ return fract(sin(dot(c, vec2(12.9898,78.233))) * 43758.5453); }
-  void main(){
-    vec4 col = texture2D(tDiffuse, vUv);
-    vec2 p = vUv - 0.5;
-    float v = smoothstep(0.85, 0.35, length(p));
-    col.rgb *= v;
-    float g = (rand(vUv + uGrain) - 0.5) * 0.06;
-    col.rgb += g;
-    gl_FragColor = col;
-  }`;
-
 export class Game {
   gl: HTMLCanvasElement;
   renderer: THREE.WebGLRenderer;
@@ -185,7 +171,7 @@ export class Game {
         tDiffuse: { value: null },
         uGrain: { value: 0 },
       },
-      vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);}`,
+      vertexShader: VIGNETTE_VS,
       fragmentShader: VIGNETTE_FS,
     });
     this.composer.addPass(this.vignette);

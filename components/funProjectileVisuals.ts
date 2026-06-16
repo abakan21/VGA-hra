@@ -186,7 +186,7 @@ function normalizeProjectileModel(model: THREE.Object3D, mode: FunWeaponMode): v
 
   model.position.sub(center);
 
-  const targetSize = mode === 'chicken' ? 2.0 : 1.25;
+  const targetSize = mode === 'chicken' ? 2.2 : 1.6;
   model.scale.multiplyScalar(targetSize / maxDim);
 
   model.rotation.y += Math.PI;
@@ -202,7 +202,9 @@ function normalizeProjectileModel(model: THREE.Object3D, mode: FunWeaponMode): v
       const standard = mat as THREE.MeshStandardMaterial;
       if (standard.isMeshStandardMaterial) {
         standard.envMapIntensity = Math.max(standard.envMapIntensity ?? 0, 0.6);
-        standard.emissiveIntensity = Math.max(standard.emissiveIntensity ?? 0, 0.04);
+        // make the projectile glow in its own colour so it's clearly visible in dark space
+        if (standard.color) standard.emissive = standard.color.clone();
+        standard.emissiveIntensity = 0.9;
         standard.needsUpdate = true;
       }
     }
